@@ -1,144 +1,206 @@
-"use client"
-import { useState, useEffect } from "react"
-import type React from "react"
+"use client";
+import { useState, useEffect } from "react";
+import type React from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/context/AuthContext"
-import { parseJwt } from "@/lib/utils"
-import { toast } from "sonner"
-import { User, Bell, Shield, Zap, Palette, Upload, Eye, EyeOff } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
+import { parseJwt } from "@/lib/utils";
+import { updateBackupFrequency, getGoogleDriveAuthUrl } from "@/lib/api";
+import { toast } from "sonner";
+import {
+  User,
+  Bell,
+  Shield,
+  Zap,
+  Palette,
+  Upload,
+  Eye,
+  EyeOff,
+  Database,
+  ExternalLink,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge"
+
 
 type UserProfile = {
-  id: number
-  username: string
-  email: string
-  display_name: string
-  createdAt: string
-  planID: number
-  googleID?: string
-  google_drive_access_token?: string
-  googleDriveRefreshToken?: string
-  googleDriveTokenExpiry?: string
-  passwordHash?: string
-}
+  id: number;
+  username: string;
+  email: string;
+  display_name: string;
+  createdAt: string;
+  planID: number;
+  googleID?: string;
+  google_drive_access_token?: string;
+  googleDriveRefreshToken?: string;
+  googleDriveTokenExpiry?: string;
+  passwordHash?: string;
+};
 
 export default function SettingsPage() {
-  const { token } = useAuth()
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState(false)
+  const { token } = useAuth();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [passwordData, setPasswordData] = useState({
     newPassword: "",
     confirmPassword: "",
-  })
+  });
   const [showPasswords, setShowPasswords] = useState({
     new: false,
     confirm: false,
-  })
+  });
+  const [backupFrequency, setBackupFrequency] = useState<
+    "off" | "weekly" | "monthly"
+  >("off");
+  const [frequencyLoading, setFrequencyLoading] = useState(false);
 
-  const userInfo = token ? parseJwt(token) : null
+  const userInfo = token ? parseJwt(token) : null;
 
   // Fetch user profile data using the provided API
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!token || !userInfo?.user_id) return
+      if (!token || !userInfo?.user_id) return;
 
       try {
-        setLoading(true)
-        const response = await fetch(`http://localhost:8080/api/user/${userInfo.user_id}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+        setLoading(true);
+        const response = await fetch(
+          `http://localhost:8080/api/user/${userInfo.user_id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           },
-        })
+        );
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch user profile`)
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error ||
+              `HTTP ${response.status}: Failed to fetch user profile`,
+          );
         }
 
-        const data = await response.json()
-        setUserProfile(data)
-        toast.success("Profile loaded successfully")
+        const data = await response.json();
+        setUserProfile(data);
+        // Initialize backup frequency from user profile
+        if (data.BackupFrequency) {
+          setBackupFrequency(data.BackupFrequency);
+        }
+        toast.success("Profile loaded successfully");
       } catch (error: any) {
-        console.error("Error fetching user profile:", error)
-        toast.error(`Failed to load profile: ${error.message}`)
+        console.error("Error fetching user profile:", error);
+        toast.error(`Failed to load profile: ${error.message}`);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchUserProfile()
-  }, [token, userInfo?.user_id])
+    fetchUserProfile();
+  }, [token, userInfo?.user_id]);
 
   // Update password using the provided API
   const handlePasswordUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords don't match")
-      return
+      toast.error("New passwords don't match");
+      return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long")
-      return
+      toast.error("Password must be at least 8 characters long");
+      return;
     }
 
-    setUpdating(true)
+    setUpdating(true);
     try {
-      const response = await fetch("http://localhost:8080/api/settings/password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        "http://localhost:8080/api/settings/password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            password: passwordData.newPassword,
+          }),
         },
-        body: JSON.stringify({
-          password: passwordData.newPassword,
-        }),
-      })
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to update password`)
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+            `HTTP ${response.status}: Failed to update password`,
+        );
       }
 
-      const result = await response.json()
-      toast.success("Password updated successfully")
+      const result = await response.json();
+      toast.success("Password updated successfully");
       setPasswordData({
         newPassword: "",
         confirmPassword: "",
-      })
+      });
     } catch (error: any) {
-      console.error("Error updating password:", error)
-      toast.error(`Failed to update password: ${error.message}`)
+      console.error("Error updating password:", error);
+      toast.error(`Failed to update password: ${error.message}`);
     } finally {
-      setUpdating(false)
+      setUpdating(false);
     }
-  }
+  };
+
+  // Handle backup frequency update
+  const handleFrequencyUpdate = async (
+    frequency: "off" | "weekly" | "monthly",
+  ) => {
+    if (!token) return;
+
+    setFrequencyLoading(true);
+    try {
+      await updateBackupFrequency(token, frequency);
+      setBackupFrequency(frequency);
+      toast.success(`Backup frequency updated to ${frequency}`);
+    } catch (error: any) {
+      toast.error(`Failed to update backup frequency: ${error.message}`);
+    } finally {
+      setFrequencyLoading(false);
+    }
+  };
+
+  // Handle Google Drive connection
+  const handleGoogleDriveConnect = () => {
+    if (userInfo?.user_id) {
+      const authUrl = getGoogleDriveAuthUrl(userInfo.user_id);
+      window.open(authUrl, "_blank");
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
       </div>
-    )
+    );
   }
 
   if (!userProfile) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load profile</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Failed to load profile
+          </h2>
           <p className="text-gray-600">Please try refreshing the page</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -146,7 +208,9 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and application preferences.</p>
+        <p className="text-muted-foreground">
+          Manage your account and application preferences.
+        </p>
       </div>
 
       {/* Settings Tabs */}
@@ -156,7 +220,10 @@ export default function SettingsPage() {
             <User className="w-4 h-4" />
             <span>Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="notifications"
+            className="flex items-center space-x-2"
+          >
             <Bell className="w-4 h-4" />
             <span>Notifications</span>
           </TabsTrigger>
@@ -164,11 +231,17 @@ export default function SettingsPage() {
             <Shield className="w-4 h-4" />
             <span>Privacy</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="integrations"
+            className="flex items-center space-x-2"
+          >
             <Zap className="w-4 h-4" />
             <span>Integrations</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="appearance"
+            className="flex items-center space-x-2"
+          >
             <Palette className="w-4 h-4" />
             <span>Appearance</span>
           </TabsTrigger>
@@ -179,7 +252,9 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
-              <p className="text-sm text-muted-foreground">Update your personal information and account details.</p>
+              <p className="text-sm text-muted-foreground">
+                Update your personal information and account details.
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Avatar Upload */}
@@ -188,11 +263,16 @@ export default function SettingsPage() {
                   <User className="w-12 h-12 text-gray-400" />
                 </div>
                 <div>
-                  <Button variant="outline" className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="flex items-center space-x-2"
+                  >
                     <Upload className="w-4 h-4" />
                     <span>Upload new photo</span>
                   </Button>
-                  <p className="text-sm text-muted-foreground mt-2">JPG, PNG up to 10MB</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    JPG, PNG up to 10MB
+                  </p>
                 </div>
               </div>
 
@@ -204,19 +284,31 @@ export default function SettingsPage() {
                     id="fullName"
                     value={userProfile.display_name || ""}
                     onChange={(e) =>
-                      setUserProfile((prev) => (prev ? { ...prev, display_name: e.target.value } : null))
+                      setUserProfile((prev) =>
+                        prev ? { ...prev, display_name: e.target.value } : null,
+                      )
                     }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" value={userProfile.email || ""} disabled className="bg-gray-50" />
+                  <Input
+                    id="email"
+                    value={userProfile.email || ""}
+                    disabled
+                    className="bg-gray-50"
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
-                  <Input id="username" value={userProfile.username || ""} disabled className="bg-gray-50" />
+                  <Input
+                    id="username"
+                    value={userProfile.username || ""}
+                    disabled
+                    className="bg-gray-50"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -245,7 +337,9 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
-              <p className="text-sm text-muted-foreground">Update your password to keep your account secure.</p>
+              <p className="text-sm text-muted-foreground">
+                Update your password to keep your account secure.
+              </p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordUpdate} className="space-y-4">
@@ -256,7 +350,12 @@ export default function SettingsPage() {
                       id="newPassword"
                       type={showPasswords.new ? "text" : "password"}
                       value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
                       required
                       minLength={8}
                       placeholder="Enter new password"
@@ -266,9 +365,18 @@ export default function SettingsPage() {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPasswords((prev) => ({ ...prev, new: !prev.new }))}
+                      onClick={() =>
+                        setShowPasswords((prev) => ({
+                          ...prev,
+                          new: !prev.new,
+                        }))
+                      }
                     >
-                      {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPasswords.new ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -280,7 +388,12 @@ export default function SettingsPage() {
                       id="confirmPassword"
                       type={showPasswords.confirm ? "text" : "password"}
                       value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
                       required
                       minLength={8}
                       placeholder="Confirm new password"
@@ -290,9 +403,18 @@ export default function SettingsPage() {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPasswords((prev) => ({ ...prev, confirm: !prev.confirm }))}
+                      onClick={() =>
+                        setShowPasswords((prev) => ({
+                          ...prev,
+                          confirm: !prev.confirm,
+                        }))
+                      }
                     >
-                      {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPasswords.confirm ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -314,22 +436,34 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">User ID</Label>
+                  <Label className="text-sm font-medium text-gray-500">
+                    User ID
+                  </Label>
                   <p className="text-sm">{userProfile.id}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Plan ID</Label>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Plan ID
+                  </Label>
                   <p className="text-sm">{userProfile.planID}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Account Created</Label>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Account Created
+                  </Label>
                   <p className="text-sm">
-                    {userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : "N/A"}
+                    {userProfile.createdAt
+                      ? new Date(userProfile.createdAt).toLocaleDateString()
+                      : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Google Connected</Label>
-                  <p className="text-sm">{userProfile.googleID ? "Yes" : "No"}</p>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Google Connected
+                  </Label>
+                  <p className="text-sm">
+                    {userProfile.googleID ? "Yes" : "No"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -341,10 +475,14 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Notification Preferences</CardTitle>
-              <p className="text-sm text-muted-foreground">Configure how you receive notifications.</p>
+              <p className="text-sm text-muted-foreground">
+                Configure how you receive notifications.
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Notification settings coming soon...</p>
+              <p className="text-muted-foreground">
+                Notification settings coming soon...
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -353,55 +491,166 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Privacy Settings</CardTitle>
-              <p className="text-sm text-muted-foreground">Manage your privacy and data preferences.</p>
+              <p className="text-sm text-muted-foreground">
+                Manage your privacy and data preferences.
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Privacy settings coming soon...</p>
+              <p className="text-muted-foreground">
+                Privacy settings coming soon...
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="integrations">
+        <TabsContent value="integrations" className="space-y-6">
+          {/* Google Drive Integration */}
           <Card>
             <CardHeader>
-              <CardTitle>API Configuration</CardTitle>
-              <p className="text-sm text-muted-foreground">Manage your API keys and access tokens.</p>
+              <CardTitle className="flex items-center space-x-2">
+                <Database className="w-5 h-5" />
+                <span>Google Drive Integration</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Connect your Google Drive for automatic backups
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-500">Google Drive Integration</Label>
-                <p className="text-sm">{userProfile.google_drive_access_token ? "✅ Connected" : "❌ Not Connected"}</p>
-                {userProfile.googleDriveTokenExpiry && (
-                  <p className="text-xs text-gray-500">
-                    Expires: {new Date(userProfile.googleDriveTokenExpiry).toLocaleDateString()}
-                  </p>
-                )}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <div className="font-medium">
+                    {userProfile.google_drive_access_token
+                      ? "✅ Connected"
+                      : "❌ Not Connected"}
+                  </div>
+                  {userProfile.googleDriveTokenExpiry && (
+                    <p className="text-xs text-gray-500">
+                      Expires:{" "}
+                      {new Date(
+                        userProfile.googleDriveTokenExpiry,
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  onClick={handleGoogleDriveConnect}
+                  variant={
+                    userProfile.google_drive_access_token
+                      ? "outline"
+                      : "default"
+                  }
+                  size="sm"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  {userProfile.google_drive_access_token
+                    ? "Reconnect"
+                    : "Connect"}
+                </Button>
               </div>
 
               {userProfile.googleDriveRefreshToken && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">Refresh Token</Label>
-                  <p className="text-xs text-gray-400 font-mono">
+                <div className="text-xs text-gray-400">
+                  <Label className="text-sm font-medium text-gray-500">
+                    Refresh Token
+                  </Label>
+                  <p className="font-mono bg-gray-50 p-2 rounded">
                     {userProfile.googleDriveRefreshToken.substring(0, 20)}...
                   </p>
                 </div>
               )}
             </CardContent>
-          </Card> 
+          </Card>
+
+          {/* Backup Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="w-5 h-5" />
+                <span>Backup Settings</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Configure automatic backup frequency
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="backup-off"
+                    name="backup-frequency"
+                    checked={backupFrequency === "off"}
+                    onChange={() => handleFrequencyUpdate("off")}
+                    disabled={frequencyLoading}
+                  />
+                  <Label htmlFor="backup-off" className="cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <span>Off</span>
+                      <Badge variant="secondary">No automatic backups</Badge>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="backup-weekly"
+                    name="backup-frequency"
+                    checked={backupFrequency === "weekly"}
+                    onChange={() => handleFrequencyUpdate("weekly")}
+                    disabled={frequencyLoading}
+                  />
+                  <Label htmlFor="backup-weekly" className="cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <span>Weekly</span>
+                      <Badge variant="outline">Every 7 days</Badge>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="backup-monthly"
+                    name="backup-frequency"
+                    checked={backupFrequency === "monthly"}
+                    onChange={() => handleFrequencyUpdate("monthly")}
+                    disabled={frequencyLoading}
+                  />
+                  <Label htmlFor="backup-monthly" className="cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <span>Monthly</span>
+                      <Badge variant="outline">Every 30 days</Badge>
+                    </div>
+                  </Label>
+                </div>
+              </div>
+
+              {frequencyLoading && (
+                <div className="text-sm text-muted-foreground">
+                  Updating frequency...
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
               <CardTitle>Appearance Settings</CardTitle>
-              <p className="text-sm text-muted-foreground">Customize the look and feel of your dashboard.</p>
+              <p className="text-sm text-muted-foreground">
+                Customize the look and feel of your dashboard.
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Appearance settings coming soon...</p>
+              <p className="text-muted-foreground">
+                Appearance settings coming soon...
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

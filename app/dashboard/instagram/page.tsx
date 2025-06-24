@@ -1,75 +1,87 @@
-"use client"
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/AuthContext"
-import { createPortal } from "react-dom"
-import { parseJwt } from "@/lib/utils"
+"use client";
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import { createPortal } from "react-dom";
+import { parseJwt } from "@/lib/utils";
+import { storeInstagramUserInfo, uploadToS3 } from "@/lib/api";
+import { toast } from "sonner";
 
 // Define a type for a Reel
 type Reel = {
-  id: number
-  caption: string
-  likes: number
-  views: number
-  playCount: number
-  commentCount: number
-  reel_url?: string
-  instagram_username?: string
-  timestamp?: number
-  thumbnail?: string
-}
+  id: number;
+  caption: string;
+  likes: number;
+  views: number;
+  playCount: number;
+  commentCount: number;
+  reel_url?: string;
+  instagram_username?: string;
+  timestamp?: number;
+  thumbnail?: string;
+};
 
 // Tooltip component with delayed show and fixed overlay
-const Tooltip: React.FC<{ text: string; children: React.ReactNode; display?: "block" | "inline-block" }> = ({
-  text,
-  children,
-  display = "inline-block",
-}) => {
-  const [show, setShow] = useState(false)
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const childRef = useRef<HTMLSpanElement>(null)
+const Tooltip: React.FC<{
+  text: string;
+  children: React.ReactNode;
+  display?: "block" | "inline-block";
+}> = ({ text, children, display = "inline-block" }) => {
+  const [show, setShow] = useState(false);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const childRef = useRef<HTMLSpanElement>(null);
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => {
       if (childRef.current) {
-        const rect = childRef.current.getBoundingClientRect()
+        const rect = childRef.current.getBoundingClientRect();
         setCoords({
           top: rect.top + window.scrollY,
           left: rect.left + window.scrollX,
           width: rect.width,
-        })
-        setShow(true)
+        });
+        setShow(true);
       }
-    }, 2000) // 2 seconds
-  }
+    }, 2000); // 2 seconds
+  };
 
   const handleMouseLeave = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setShow(false)
-  }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShow(false);
+  };
 
   // Touch events for mobile
   const handleTouchStart = () => {
     timeoutRef.current = setTimeout(() => {
       if (childRef.current) {
-        const rect = childRef.current.getBoundingClientRect()
+        const rect = childRef.current.getBoundingClientRect();
         setCoords({
           top: rect.top + window.scrollY,
           left: rect.left + window.scrollX,
           width: rect.width,
-        })
-        setShow(true)
+        });
+        setShow(true);
       }
-    }, 2000)
-  }
+    }, 2000);
+  };
   const handleTouchEnd = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setShow(false)
-  }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShow(false);
+  };
 
   // Tooltip overlay (portal)
   const tooltipNode =
@@ -91,7 +103,7 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode; display?: "bl
           </div>,
           document.body,
         )
-      : null
+      : null;
 
   return (
     <span
@@ -106,132 +118,140 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode; display?: "bl
       {children}
       {tooltipNode}
     </span>
-  )
-}
+  );
+};
 
 // Add these helper functions at the top of the file, after the imports
-const STORAGE_EXPIRY = 12 * 60 * 60 * 1000 // 12 hours in milliseconds
+const STORAGE_EXPIRY = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
 type StoredData<T> = {
-  data: T
-  timestamp: number
-}
+  data: T;
+  timestamp: number;
+};
 
 function saveToStorage<T>(key: string, data: T): void {
   const item: StoredData<T> = {
     data,
     timestamp: Date.now(),
-  }
-  localStorage.setItem(key, JSON.stringify(item))
+  };
+  localStorage.setItem(key, JSON.stringify(item));
 }
 
 function getFromStorage<T>(key: string): T | null {
-  const item = localStorage.getItem(key)
-  if (!item) return null
+  const item = localStorage.getItem(key);
+  if (!item) return null;
 
   try {
-    const parsed = JSON.parse(item) as StoredData<T>
-    const now = Date.now()
+    const parsed = JSON.parse(item) as StoredData<T>;
+    const now = Date.now();
 
     // Check if data has expired
     if (now - parsed.timestamp > STORAGE_EXPIRY) {
-      localStorage.removeItem(key)
-      return null
+      localStorage.removeItem(key);
+      return null;
     }
 
-    return parsed.data
+    return parsed.data;
   } catch {
-    return null
+    return null;
   }
 }
 
 export default function InstagramDownloader() {
-  const { token } = useAuth()
+  const { token } = useAuth();
   const [username, setUsername] = useState(() => {
-    return getFromStorage<string>("instagram_username") || ""
-  })
-  const [limit, setLimit] = useState(10)
+    return getFromStorage<string>("instagram_username") || "";
+  });
+  const [limit, setLimit] = useState(10);
   const [reels, setReels] = useState<Reel[]>(() => {
-    return getFromStorage<Reel[]>("instagram_reels") || []
-  })
+    return getFromStorage<Reel[]>("instagram_reels") || [];
+  });
   const [selected, setSelected] = useState<number[]>(() => {
-    return getFromStorage<number[]>("instagram_selected") || []
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [uploadSuccess, setUploadSuccess] = useState(false)
+    return getFromStorage<number[]>("instagram_selected") || [];
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [thumbnailStates, setThumbnailStates] = useState<
     Record<number, { url: string | null; error: boolean; isLoading: boolean }>
-  >({})
+  >({});
+  const [storingUserInfo, setStoringUserInfo] = useState(false);
+  const [s3UploadLoading, setS3UploadLoading] = useState<number[]>([]);
+  const [s3UploadResults, setS3UploadResults] = useState<
+    Record<number, string>
+  >({});
 
-  const userId = token ? parseJwt(token).user_id : undefined
+  const userId = token ? parseJwt(token).user_id : undefined;
 
   // Save username to localStorage when it changes
   useEffect(() => {
     if (username) {
-      saveToStorage("instagram_username", username)
+      saveToStorage("instagram_username", username);
     }
-  }, [username])
+  }, [username]);
 
   // Save reels to localStorage when they change
   useEffect(() => {
     if (reels.length > 0) {
-      saveToStorage("instagram_reels", reels)
+      saveToStorage("instagram_reels", reels);
     }
-  }, [reels])
+  }, [reels]);
 
   // Save selected reels to localStorage when they change
   useEffect(() => {
     if (selected.length > 0) {
-      saveToStorage("instagram_selected", selected)
+      saveToStorage("instagram_selected", selected);
     }
-  }, [selected])
+  }, [selected]);
 
   // Update the clearData function
   const clearData = () => {
-    setReels([])
-    setSelected([])
-    setError(null)
-    setUploadError(null)
-    setUploadSuccess(false)
-    localStorage.removeItem("instagram_reels")
-    localStorage.removeItem("instagram_selected")
-    localStorage.removeItem("instagram_username")
-  }
+    setReels([]);
+    setSelected([]);
+    setError(null);
+    setUploadError(null);
+    setUploadSuccess(false);
+    localStorage.removeItem("instagram_reels");
+    localStorage.removeItem("instagram_selected");
+    localStorage.removeItem("instagram_username");
+  };
 
   // Add a function to check and clear expired data
   const checkExpiredData = () => {
-    const username = getFromStorage<string>("instagram_username")
-    const reels = getFromStorage<Reel[]>("instagram_reels")
-    const selected = getFromStorage<number[]>("instagram_selected")
+    const username = getFromStorage<string>("instagram_username");
+    const reels = getFromStorage<Reel[]>("instagram_reels");
+    const selected = getFromStorage<number[]>("instagram_selected");
 
-    if (!username) setUsername("")
-    if (!reels) setReels([])
-    if (!selected) setSelected([])
-  }
+    if (!username) setUsername("");
+    if (!reels) setReels([]);
+    if (!selected) setSelected([]);
+  };
 
   // Check for expired data on component mount
   useEffect(() => {
-    checkExpiredData()
-  }, [])
+    checkExpiredData();
+  }, []);
 
   // Update the thumbnail loading effect
   useEffect(() => {
     const loadThumbnails = async () => {
       // Set all thumbnails to loading state immediately
-      const initialStates: Record<number, { url: string | null; error: boolean; isLoading: boolean }> = {}
+      const initialStates: Record<
+        number,
+        { url: string | null; error: boolean; isLoading: boolean }
+      > = {};
       reels.forEach((reel) => {
         if (reel.thumbnail) {
-          initialStates[reel.id] = { url: null, error: false, isLoading: true }
+          initialStates[reel.id] = { url: null, error: false, isLoading: true };
         }
-      })
-      setThumbnailStates(initialStates)
+      });
+      setThumbnailStates(initialStates);
 
       // Load all thumbnails in parallel
       const loadPromises = reels.map(async (reel) => {
-        if (!reel.thumbnail || !token) return
+        if (!reel.thumbnail || !token) return;
 
         try {
           const response = await fetch(
@@ -241,66 +261,69 @@ export default function InstagramDownloader() {
                 Authorization: `Bearer ${token}`,
               },
             },
-          )
+          );
 
           if (!response.ok) {
-            throw new Error("Failed to load image")
+            throw new Error("Failed to load image");
           }
 
-          const blob = await response.blob()
-          const objectUrl = URL.createObjectURL(blob)
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
 
           setThumbnailStates((prev) => ({
             ...prev,
             [reel.id]: { url: objectUrl, error: false, isLoading: false },
-          }))
+          }));
         } catch (err) {
-          console.error("Error loading thumbnail:", err)
+          console.error("Error loading thumbnail:", err);
           setThumbnailStates((prev) => ({
             ...prev,
             [reel.id]: { url: null, error: true, isLoading: false },
-          }))
+          }));
         }
-      })
+      });
 
-      await Promise.all(loadPromises)
-    }
+      await Promise.all(loadPromises);
+    };
 
-    loadThumbnails()
+    loadThumbnails();
 
     // Cleanup function to revoke object URLs
     return () => {
       Object.values(thumbnailStates).forEach((state) => {
         if (state.url) {
-          URL.revokeObjectURL(state.url)
+          URL.revokeObjectURL(state.url);
         }
-      })
-    }
-  }, [reels, token])
+      });
+    };
+  }, [reels, token]);
 
   // Fetch reels from /api/scraper/instagram/reels
   const fetchReels = async () => {
-    setLoading(true)
-    setError(null)
-    setReels([])
-    setSelected([])
+    setLoading(true);
+    setError(null);
+    setReels([]);
+    setSelected([]);
     try {
-      const resp = await fetch("http://localhost:8080/api/scraper/instagram/reels", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const resp = await fetch(
+        "http://localhost:8080/api/scraper/instagram/reels",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_id: username, // username as user_id (string)
+            limit: limit,
+          }),
         },
-        body: JSON.stringify({
-          user_id: username, // username as user_id (string)
-          limit: limit,
-        }),
-      })
+      );
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}))
-        throw new Error(err.error || "Failed to fetch reels")
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to fetch reels");
       }
-      const data = await resp.json()
+      const data = await resp.json();
       // Assume data.reels is an array of reels
       // Map to Reel type (add id if not present)
       const reelsData = (data.reels || []).map((r: any, idx: number) => ({
@@ -314,30 +337,32 @@ export default function InstagramDownloader() {
         instagram_username: username,
         timestamp: r.timestamp,
         thumbnail: r.thumbnail,
-      }))
-      setReels(reelsData)
+      }));
+      setReels(reelsData);
     } catch (e: any) {
-      setError(e.message || "Unknown error")
+      setError(e.message || "Unknown error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSelect = (id: number) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   // Get selected reels
-  const selectedReels = reels.filter((r) => selected.includes(r.id))
+  const selectedReels = reels.filter((r) => selected.includes(r.id));
 
   // Upload to Drive logic
   const uploadToDrive = async () => {
-    setUploading(true)
-    setUploadError(null)
-    setUploadSuccess(false)
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(false);
     try {
-      if (!userId) throw new Error("User ID not found in token")
-      if (selectedReels.length === 0) throw new Error("No reels selected")
+      if (!userId) throw new Error("User ID not found in token");
+      if (selectedReels.length === 0) throw new Error("No reels selected");
 
       // Prepare reels array for API - matching exact format from curl example
       const reelsPayload = selectedReels.map((r) => ({
@@ -350,7 +375,7 @@ export default function InstagramDownloader() {
         play_count: r.playCount,
         comment_count: r.commentCount,
         thumbnail: r.thumbnail,
-      }))
+      }));
 
       const resp = await fetch("http://localhost:8080/api/upload/reels", {
         method: "POST",
@@ -362,24 +387,65 @@ export default function InstagramDownloader() {
           user_id: userId,
           reels: reelsPayload,
         }),
-      })
+      });
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}))
-        throw new Error(err.error || "Failed to upload reels to drive")
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to upload reels to drive");
       }
-      setUploadSuccess(true)
+      setUploadSuccess(true);
     } catch (e: any) {
-      setUploadError(e.message || "Unknown error")
+      setUploadError(e.message || "Unknown error");
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
+
+  // Store Instagram user info
+  const handleStoreUserInfo = async () => {
+    if (!token || !username) {
+      toast.error("Please enter a username first");
+      return;
+    }
+
+    setStoringUserInfo(true);
+    try {
+      const result = await storeInstagramUserInfo(token, username);
+      toast.success("User info stored successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to store user info: ${error.message}`);
+    } finally {
+      setStoringUserInfo(false);
+    }
+  };
+
+  // Upload to S3
+  const handleS3Upload = async (reelId: number, reelUrl: string) => {
+    if (!token || !reelUrl) {
+      toast.error("Invalid reel URL");
+      return;
+    }
+
+    setS3UploadLoading((prev) => [...prev, reelId]);
+    try {
+      const result = await uploadToS3(token, reelUrl);
+      setS3UploadResults((prev) => ({ ...prev, [reelId]: result.s3_url }));
+      toast.success("Uploaded to S3 successfully!");
+    } catch (error: any) {
+      toast.error(`S3 upload failed: ${error.message}`);
+    } finally {
+      setS3UploadLoading((prev) => prev.filter((id) => id !== reelId));
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Instagram Downloader</h1>
-        <p className="text-muted-foreground">Fetch and download Instagram reels from any public profile.</p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Instagram Downloader
+        </h1>
+        <p className="text-muted-foreground">
+          Fetch and download Instagram reels from any public profile.
+        </p>
       </div>
 
       <div className="flex gap-6">
@@ -389,7 +455,9 @@ export default function InstagramDownloader() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Fetch reel data</CardTitle>
-                <CardDescription>Enter an Instagram username to fetch their latest reels</CardDescription>
+                <CardDescription>
+                  Enter an Instagram username to fetch their latest reels
+                </CardDescription>
               </div>
               <Button variant="outline" onClick={clearData}>
                 Clear Data
@@ -424,7 +492,11 @@ export default function InstagramDownloader() {
                       <input
                         type="checkbox"
                         checked={selected.length === reels.length}
-                        onChange={(e) => setSelected(e.target.checked ? reels.map((r) => r.id) : [])}
+                        onChange={(e) =>
+                          setSelected(
+                            e.target.checked ? reels.map((r) => r.id) : [],
+                          )
+                        }
                       />{" "}
                       Select All
                     </label>
@@ -443,7 +515,7 @@ export default function InstagramDownloader() {
                           {reel.thumbnail && (
                             <div className="mb-3 rounded-lg overflow-hidden relative aspect-[4/5] bg-gray-100 max-h-[300px]">
                               {(() => {
-                                const state = thumbnailStates[reel.id]
+                                const state = thumbnailStates[reel.id];
                                 return (
                                   <>
                                     {state?.url && (
@@ -452,7 +524,7 @@ export default function InstagramDownloader() {
                                         alt={`Thumbnail for reel ${reel.id}`}
                                         className="w-full h-full object-cover transition-opacity duration-200"
                                         onLoad={(e) => {
-                                          e.currentTarget.style.opacity = "1"
+                                          e.currentTarget.style.opacity = "1";
                                         }}
                                         style={{ opacity: 0 }}
                                         loading="lazy"
@@ -465,7 +537,10 @@ export default function InstagramDownloader() {
                                     )}
                                     {state?.isLoading && (
                                       <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                                        <svg className="w-8 h-8 animate-spin" viewBox="0 0 24 24">
+                                        <svg
+                                          className="w-8 h-8 animate-spin"
+                                          viewBox="0 0 24 24"
+                                        >
                                           <circle
                                             className="opacity-25"
                                             cx="12"
@@ -484,7 +559,7 @@ export default function InstagramDownloader() {
                                       </div>
                                     )}
                                   </>
-                                )
+                                );
                               })()}
                             </div>
                           )}
@@ -493,12 +568,22 @@ export default function InstagramDownloader() {
                               {reel.caption}
                             </div>
                           </Tooltip>
-                          <div className="text-xs text-muted-foreground mb-2">Reel {reel.id}</div>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            Reel {reel.id}
+                          </div>
                           <div className="flex flex-wrap gap-2 text-xs">
-                            <span>❤️ {reel.likes?.toLocaleString?.() ?? 0}</span>
-                            <span>👁️ {reel.views?.toLocaleString?.() ?? 0}</span>
-                            <span>▶️ {reel.playCount?.toLocaleString?.() ?? 0}</span>
-                            <span>💬 {reel.commentCount?.toLocaleString?.() ?? 0}</span>
+                            <span>
+                              ❤️ {reel.likes?.toLocaleString?.() ?? 0}
+                            </span>
+                            <span>
+                              👁️ {reel.views?.toLocaleString?.() ?? 0}
+                            </span>
+                            <span>
+                              ▶️ {reel.playCount?.toLocaleString?.() ?? 0}
+                            </span>
+                            <span>
+                              💬 {reel.commentCount?.toLocaleString?.() ?? 0}
+                            </span>
                           </div>
                         </CardContent>
                       </Card>
@@ -514,7 +599,9 @@ export default function InstagramDownloader() {
           <Card>
             <CardHeader>
               <CardTitle>Download Cart</CardTitle>
-              <CardDescription>{selectedReels.length} reel(s) selected</CardDescription>
+              <CardDescription>
+                {selectedReels.length} reel(s) selected
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ol className="list-decimal pl-4 space-y-1">
@@ -533,11 +620,21 @@ export default function InstagramDownloader() {
               </ol>
               {selectedReels.length > 0 && (
                 <>
-                  <Button className="mt-4 w-full" onClick={uploadToDrive} disabled={uploading}>
+                  <Button
+                    className="mt-4 w-full"
+                    onClick={uploadToDrive}
+                    disabled={uploading}
+                  >
                     {uploading ? "Uploading..." : "Upload to Drive"}
                   </Button>
-                  {uploadError && <div className="text-red-500 mt-2">{uploadError}</div>}
-                  {uploadSuccess && <div className="text-green-600 mt-2">Upload successful!</div>}
+                  {uploadError && (
+                    <div className="text-red-500 mt-2">{uploadError}</div>
+                  )}
+                  {uploadSuccess && (
+                    <div className="text-green-600 mt-2">
+                      Upload successful!
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>
@@ -545,5 +642,5 @@ export default function InstagramDownloader() {
         </div>
       </div>
     </div>
-  )
+  );
 }

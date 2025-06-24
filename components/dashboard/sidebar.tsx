@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import {
   Home,
   BarChart3,
@@ -14,18 +14,42 @@ import {
   HardDrive,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/context/AuthContext"
-import { usePathname } from "next/navigation"
-import Link from "next/link"
-import { useState } from "react"
+  Settings as SettingsIcon,
+  Database,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", icon: Home, href: "/dashboard", current: false },
-  { name: "Analytics", icon: BarChart3, href: "/dashboard/analytics", current: false },
-  { name: "Schedule", icon: Calendar, href: "/dashboard/schedule", current: false },
-]
+  {
+    name: "Analytics",
+    icon: BarChart3,
+    href: "/dashboard/analytics",
+    current: false,
+  },
+  {
+    name: "Schedule",
+    icon: Calendar,
+    href: "/dashboard/schedule",
+    current: false,
+  },
+  {
+    name: "Backup Manager",
+    icon: Database,
+    href: "/dashboard/backup",
+    current: false,
+  },
+  {
+    name: "Settings",
+    icon: SettingsIcon,
+    href: "/dashboard/settings",
+    current: false,
+  },
+];
 
 const agents = [
   { name: "Backup Agent", icon: Shield, active: true },
@@ -33,27 +57,35 @@ const agents = [
   { name: "Outreach Agent", icon: MessageCircle, active: true },
   { name: "IG Warmer", icon: Heart, active: true },
   { name: "IG Support", icon: Users, active: true },
-]
+];
 
 const tools = [
-  { name: "Instagram Downloader", icon: Instagram, href: "/dashboard/instagram" },
+  {
+    name: "Instagram Downloader",
+    icon: Instagram,
+    href: "/dashboard/instagram",
+  },
   { name: "Drive Downloads", icon: HardDrive, href: "/dashboard/drive" },
-]
+];
+
+const adminTools = [
+  { name: "Admin Panel", icon: SettingsIcon, href: "/dashboard/admin" },
+];
 
 const connections = [
   { name: "Instagram", icon: Instagram },
   { name: "YouTube", icon: Youtube },
   { name: "TikTok", icon: Zap },
-]
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const { logout } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const pathname = usePathname();
+  const { logout } = useAuth();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
     <div
@@ -80,7 +112,9 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">Q</span>
           </div>
-          {!isCollapsed && <span className="text-xl font-semibold text-gray-900">Quolo</span>}
+          {!isCollapsed && (
+            <span className="text-xl font-semibold text-gray-900">Quolo</span>
+          )}
         </div>
       </div>
 
@@ -112,7 +146,9 @@ export function Sidebar() {
           {/* Tools */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">TOOLS</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                TOOLS
+              </h3>
             )}
             <ul className="space-y-2">
               {tools.map((tool) => (
@@ -138,7 +174,9 @@ export function Sidebar() {
           {/* Agents */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">AGENTS</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                AGENTS
+              </h3>
             )}
             <ul className="space-y-2">
               {agents.map((agent) => (
@@ -150,8 +188,38 @@ export function Sidebar() {
                   >
                     <agent.icon className="w-5 h-5 mr-3" />
                     {!isCollapsed && agent.name}
-                    {agent.active && !isCollapsed && <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>}
+                    {agent.active && !isCollapsed && (
+                      <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
+                    )}
                   </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Admin Tools */}
+          <div>
+            {!isCollapsed && (
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                ADMIN
+              </h3>
+            )}
+            <ul className="space-y-2">
+              {adminTools.map((tool) => (
+                <li key={tool.name}>
+                  <Link
+                    href={tool.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === tool.href
+                        ? "bg-gray-100 text-gray-900"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    )}
+                    title={isCollapsed ? tool.name : undefined}
+                  >
+                    <tool.icon className="w-5 h-5 mr-3" />
+                    {!isCollapsed && tool.name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -160,7 +228,9 @@ export function Sidebar() {
           {/* Connections */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">CONNECTIONS</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                CONNECTIONS
+              </h3>
             )}
             <ul className="space-y-2">
               {connections.map((connection) => (
@@ -180,5 +250,5 @@ export function Sidebar() {
         </nav>
       </div>
     </div>
-  )
+  );
 }
