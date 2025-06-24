@@ -387,7 +387,7 @@ export default function SettingsPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card> 
         </TabsContent>
 
         <TabsContent value="appearance">
