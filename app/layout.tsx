@@ -10,8 +10,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Quolo - Social Media Management",
   description: "Comprehensive social media management platform",
-    generator: 'v0.dev'
-}
+  icons: {
+    icon: "/favicon.ico", 
+  },
+};
 
 export default function RootLayout({
   children,
