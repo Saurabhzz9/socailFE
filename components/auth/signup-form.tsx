@@ -61,7 +61,8 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
   };
 
   return (
-    <div className="flex w-full min-h-screen overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black relative">
+    <div className="flex w-full h-screen overflow-y-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black relative">
+
 
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
