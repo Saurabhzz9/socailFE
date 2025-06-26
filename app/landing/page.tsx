@@ -70,7 +70,7 @@ export default function LandingPage() {
                 href="#testimonials"
                 className="text-gray-300 hover:text-white transition-colors font-medium"
               >
-                Reviews 
+                Reviews   
               </a> 
               <a
                 href="#pricing"
