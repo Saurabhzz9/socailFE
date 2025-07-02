@@ -256,7 +256,7 @@ export default function SchedulePage() {
   useEffect(() => {
     // Set all thumbnails to loading state immediately
     const initialStates: Record<number, { url: string | null; error: boolean; isLoading: boolean }> = {};
-    scheduledPosts.forEach((post) => {
+    scheduledPosts?.forEach((post) => {
       if (post.thumbnail) {
         initialStates[post.id] = { url: null, error: false, isLoading: true };
       }
@@ -316,11 +316,16 @@ export default function SchedulePage() {
 
   // Group scheduled posts by weekday
   const postsByWeekday: Record<number, ScheduledPost[]> = {};
-  for (let i = 0; i < 7; i++) postsByWeekday[i] = [];
-  scheduledPosts.forEach(post => {
-    const idx = getWeekdayIndex(post.scheduled_time);
-    postsByWeekday[idx].push(post);
-  });
+
+for (let i = 0; i < 7; i++) {
+  postsByWeekday[i] = [];
+}
+
+scheduledPosts?.forEach(post => {
+  const idx = getWeekdayIndex(post.scheduled_time); // make sure this returns a number 0-6
+  postsByWeekday[idx].push(post);
+});
+
 
   return (
     <div className="space-y-6">
@@ -451,14 +456,14 @@ export default function SchedulePage() {
           <div className="space-y-4">
             {loadingScheduled ? (
               <div className="text-center text-muted-foreground py-10">Loading scheduled posts...</div>
-            ) : filteredPosts.length === 0 ? (
+            ) : filteredPosts?.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">No upcoming posts scheduled.</div>
             ) : (
-              filteredPosts.map((post) => {
+              filteredPosts?.map((post) => {
                 console.log(`[PostRender] post.id=${post.id}, hasThumbnail=${!!post.thumbnail}`);
                 return (
                   <div key={post.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50">
-                    {post.thumbnail ? (
+                    {post?.thumbnail ? (
                       <div className="relative w-16 h-16 rounded-lg overflow-hidden">
                         {thumbnailStates[post.id]?.isLoading ? (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100 animate-pulse">

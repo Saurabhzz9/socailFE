@@ -13,6 +13,8 @@ import {
   Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import Image from "next/image";
+import image2 from "@/public/favicon.ico"
 
 const navigation = [
   { name: "Dashboard", icon: Home, current: true },
@@ -41,10 +43,15 @@ export function Sidebar() {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">Q</span>
+          <Image
+                  src={image2}
+                  alt="Quolo Logo"
+                  className="w-full h-full object-cover"
+                  width={40}
+                  height={40}
+                />
           </div>
           <span className="text-xl font-semibold text-gray-900">Quolo</span>
-          <span className="text-xs bg-gray-100 px-2 py-1 rounded">⌘K</span>
         </div>
       </div>
 

@@ -9,7 +9,7 @@ export function PlatformBreakdown() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div className="flex items-center space-x-2">
-          <CardTitle className="text-lg font-semibold">Platform Breakdown</CardTitle>
+          <CardTitle className="text-lg font-semibold">Platform Breakdownss</CardTitle>
           <Info className="w-4 h-4 text-gray-400" />
         </div>
       </CardHeader>

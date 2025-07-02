@@ -44,32 +44,32 @@ export function LoginForm({
     setLoading(true);
     try {
       const resp = await axios.post(
-        "http://localhost:8080/api/login",
+        "http://localhost:8080/api/v1/auth/login", // ✅ Correct endpoint
         {
-          username: userData.username,
+          email: userData.username, // ✅ send email as `email`
           password: userData.password,
         },
         {
           headers: {
             "Content-Type": "application/json",
           },
-        },
+        }
       );
-
+  
       if (resp.data) {
         const token = resp.data.token;
         toast.success("🎉 Welcome back!");
         setToken(token);
-        setLoading(false);
         router.push("/dashboard");
       }
     } catch (error) {
-      console.error(`Error while logging`, error);
+      console.error(`Error while logging in`, error);
       toast.error("Invalid credentials. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="flex w-full h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 relative overflow-hidden">
 

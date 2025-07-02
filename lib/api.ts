@@ -132,6 +132,31 @@ export async function triggerUserInfoTest(token: string) {
   return handleApiResponse<{ message: string }>(response);
 }
 
+export async function fetchInstagramUserInfo(username: string) {
+  const token = localStorage.getItem("qoulo_token"); // or from context/state/auth hook
+
+  if (!token) {
+    throw new Error("No token found. User might not be logged in.");
+  }
+
+  const res = await fetch(
+    `http://localhost:8080/api/dashboard/user-info?username=${encodeURIComponent(username)}`,
+    {
+      headers: getAuthHeaders(token),
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("API error:", res.status, errorText);
+    throw new Error("Failed to fetch user info");
+  }
+
+  return res.json();
+}
+
+
+
 // Types
 export interface UserReel {
   id: number;

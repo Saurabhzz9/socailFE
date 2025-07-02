@@ -40,26 +40,26 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
   const onSubmitForm = async (userData: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-      const resp = await axios.post("http://localhost:8080/api/register", userData, {
+      const resp = await axios.post("http://localhost:8080/api/v1/auth/register", userData, {
         headers: {
           "Content-Type": "application/json",
         },
       });
-
+  
       if (resp.data) {
         const token = resp.data.token;
         setToken(token);
         toast.success("Successfully registered");
-        setLoading(false);
         router.push("/dashboard");
       }
     } catch (error) {
       console.error(`Error during signup`, error);
       toast.error("Error while signing up");
+    } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="flex w-full h-screen overflow-y-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black relative">
 
