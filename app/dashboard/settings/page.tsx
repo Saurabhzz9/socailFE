@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { parseJwt } from "@/lib/utils";
 import { updateBackupFrequency, getGoogleDriveAuthUrl } from "@/lib/api";
+import { InstagramService } from "@/lib/services";
 import { toast } from "sonner";
 import {
   User,
@@ -22,9 +23,14 @@ import {
   EyeOff,
   Database,
   ExternalLink,
+  Instagram,
+  Heart,
+  MessageCircle,
+  Share,
+  Bookmark,
+  MoreHorizontal,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge"
-
+import { Badge } from "@/components/ui/badge";
 
 type UserProfile = {
   id: number;
@@ -57,52 +63,74 @@ export default function SettingsPage() {
     "off" | "weekly" | "monthly"
   >("off");
   const [frequencyLoading, setFrequencyLoading] = useState(false);
+  const [instagramUsername, setInstagramUsername] = useState("");
+  const [instagramUserInfo, setInstagramUserInfo] = useState<any>(null);
+  const [instagramLoading, setInstagramLoading] = useState(false);
+  const [instagramConnected, setInstagramConnected] = useState(false);
+
+
 
   const userInfo = token ? parseJwt(token) : null;
-
-  // Fetch user profile data using the provided API
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!token || !userInfo?.user_id) return;
+    if (!token || !userInfo?.user_id) return;
+  
+    const checkConnection = async () => {
+      try {
+        const result = await InstagramService.checkInstagramConnection(
+          token,
+          userInfo.user_id,
+        );
+        setInstagramConnected(result.connected);
+        if (result.username) setInstagramUsername(result.username);
+      } catch (err) {
+        console.error("Failed to check Instagram connection:", err);
+      }
+    };
+  
+    checkConnection();
+  }, [token, userInfo]);
+  
+
+  // Using static data for now - API commented out
+  useEffect(() => {
+    const loadStaticProfile = async () => {
+      if (!userInfo?.user_id) return;
 
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:8080/api/user/${userInfo.user_id}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error ||
-              `HTTP ${response.status}: Failed to fetch user profile`,
-          );
-        }
+        // Static user profile data
+        const staticData: UserProfile = {
+          id: userInfo.user_id,
+          username: "johndoe",
+          email: userInfo.email || "user@example.com",
+          display_name: "John Doe",
+          createdAt: "2024-01-15T10:30:00Z",
+          planID: 1,
+          googleID: undefined,
+          google_drive_access_token: undefined,
+          googleDriveRefreshToken: undefined,
+          googleDriveTokenExpiry: undefined,
+          passwordHash: undefined,
+        };
 
-        const data = await response.json();
-        setUserProfile(data);
-        // Initialize backup frequency from user profile
-        if (data.BackupFrequency) {
-          setBackupFrequency(data.BackupFrequency);
-        }
-        toast.success("Profile loaded successfully");
+        setUserProfile(staticData);
+        setBackupFrequency("off");
+
+        // Simulate loading time
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        toast.success("Profile loaded successfully (Static data)");
       } catch (error: any) {
-        console.error("Error fetching user profile:", error);
+        console.error("Error loading profile:", error);
         toast.error(`Failed to load profile: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserProfile();
-  }, [token, userInfo?.user_id]);
+    loadStaticProfile();
+  }, [userInfo?.user_id, userInfo?.email]);
 
   // Update password using the provided API
   const handlePasswordUpdate = async (e: React.FormEvent) => {
@@ -120,30 +148,10 @@ export default function SettingsPage() {
 
     setUpdating(true);
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/settings/password",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            password: passwordData.newPassword,
-          }),
-        },
-      );
+      // Static response for now - API commented out
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error ||
-            `HTTP ${response.status}: Failed to update password`,
-        );
-      }
-
-      const result = await response.json();
-      toast.success("Password updated successfully");
+      toast.success("Password updated successfully (Static response)");
       setPasswordData({
         newPassword: "",
         confirmPassword: "",
@@ -182,6 +190,81 @@ export default function SettingsPage() {
     }
   };
 
+  // Fetch Instagram user info using real API
+  const handleFetchInstagramInfo = async () => {
+    if (!token || !instagramUsername.trim()) {
+      toast.error("Please enter an Instagram username");
+      return;
+    }
+
+    setInstagramLoading(true);
+    try {
+      const response = await InstagramService.fetchUserInfo(
+        token,
+        instagramUsername.trim(),
+      );
+
+      // Handle the actual API response structure: response.info[0].data.user
+      const userData = response.info[0]?.data?.user;
+      const latestPosts = response.info[0]?.latestPosts || [];
+
+      if (userData) {
+        // Map ALL available fields from the API response
+        const mappedUserInfo = {
+          // Basic Info
+          id: userData.id,
+          username: userData.username,
+          full_name: userData.fullName,
+          biography: userData.biography,
+
+          // URLs
+          input_url: userData.inputUrl,
+          profile_url: userData.url,
+          external_url: userData.externalUrl,
+          external_url_shimmed: userData.externalUrlShimmed,
+
+          // Profile Pictures
+          profile_pic_url: userData.profilePicUrl,
+          profile_pic_url_hd: userData.profilePicUrlHD,
+
+          // Counts
+          followers_count: userData.followersCount,
+          following_count: userData.followsCount,
+          posts_count: userData.postsCount,
+          igtv_video_count: userData.igtvVideoCount,
+          highlight_reel_count: userData.highlightReelCount,
+
+          // Account Status
+          is_verified: userData.verified,
+          is_private: userData.private,
+          is_business_account: userData.isBusinessAccount,
+          joined_recently: userData.joinedRecently,
+          has_channel: userData.hasChannel,
+
+          // Business Info
+          business_category: userData.businessCategoryName,
+
+          // Technical IDs
+          fbid: userData.fbid,
+          external_urls: userData.externalUrls,
+
+          // Latest Posts
+          latest_posts: latestPosts,
+        };
+
+        setInstagramUserInfo(mappedUserInfo);
+        toast.success("Instagram user info fetched successfully!");
+      } else {
+        throw new Error("Invalid API response structure");
+      }
+    } catch (error: any) {
+      toast.error(`Failed to fetch Instagram info: ${error.message}`);
+      setInstagramUserInfo(null);
+    } finally {
+      setInstagramLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -215,10 +298,17 @@ export default function SettingsPage() {
 
       {/* Settings Tabs */}
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center space-x-2">
             <User className="w-4 h-4" />
             <span>Profile</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="instagram"
+            className="flex items-center space-x-2"
+          >
+            <Instagram className="w-4 h-4" />
+            <span>Instagram</span>
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
@@ -470,6 +560,363 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* Instagram Tab */}
+        <TabsContent value="instagram" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Instagram className="w-5 h-5" />
+                <span>Instagram User Info</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Fetch and view Instagram user profile information
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter Instagram username"
+                  value={instagramUsername}
+                  onChange={(e) => setInstagramUsername(e.target.value)}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && handleFetchInstagramInfo()
+                  }
+                />
+                <Button
+                  onClick={handleFetchInstagramInfo}
+                  disabled={instagramLoading || !instagramUsername.trim()}
+                >
+                  {instagramLoading ? "Fetching..." : "Fetch Info"}
+                </Button>
+              </div>
+
+              {instagramUserInfo && (
+                <div className="border rounded-lg p-6 space-y-6">
+                  {/* Header with Profile Picture */}
+                  <div className="flex items-start space-x-6">
+                    <div className="flex-shrink-0">
+                      {instagramUserInfo.profile_pic_url_hd ? (
+                        <img
+                          src={`https://images.weserv.nl/?url=${encodeURIComponent(
+                            instagramUserInfo.profile_pic_url_hd.replace(/^https?:\/\//, "")
+                          )}`}
+                          alt={instagramUserInfo.username}
+                          className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                        />
+
+                      ) : (
+                        <div className="w-20 h-20 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
+                          <User className="w-10 h-10 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-xl">
+                          {instagramUserInfo.full_name}
+                        </h3>
+                        {instagramUserInfo.is_verified && (
+                          <Badge
+                            variant="default"
+                            className="bg-blue-500 text-white text-xs"
+                          >
+                            ✓ Verified
+                          </Badge>
+                        )}
+                        {instagramUserInfo.is_business_account && (
+                          <Badge variant="outline" className="text-xs">
+                            Business
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-gray-600 font-medium">
+                        @{instagramUserInfo.username}
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        {instagramUserInfo.is_private && (
+                          <Badge variant="secondary" className="text-xs">
+                            Private
+                          </Badge>
+                        )}
+                        {instagramUserInfo.joined_recently && (
+                          <Badge variant="outline" className="text-xs">
+                            New User
+                          </Badge>
+                        )}
+                        {instagramUserInfo.has_channel && (
+                          <Badge variant="outline" className="text-xs">
+                            Has Channel
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <div className="font-bold text-2xl text-blue-600">
+                        {instagramUserInfo.posts_count?.toLocaleString() || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Posts</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-2xl text-green-600">
+                        {instagramUserInfo.followers_count?.toLocaleString() ||
+                          0}
+                      </div>
+                      <div className="text-sm text-gray-600">Followers</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-2xl text-purple-600">
+                        {instagramUserInfo.following_count?.toLocaleString() ||
+                          0}
+                      </div>
+                      <div className="text-sm text-gray-600">Following</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-2xl text-orange-600">
+                        {instagramUserInfo.igtv_video_count?.toLocaleString() ||
+                          0}
+                      </div>
+                      <div className="text-sm text-gray-600">IGTV Videos</div>
+                    </div>
+                  </div>
+
+                  {/* Biography */}
+                  {instagramUserInfo.biography && (
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Biography
+                      </Label>
+                      <p className="text-sm mt-2 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
+                        {instagramUserInfo.biography}
+                      </p>
+                    </div>
+                  )}
+
+
+
+                  {/* Business Information */}
+                  {(instagramUserInfo.business_category ||
+                    instagramUserInfo.is_business_account) && (
+                      <div>
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Business Information
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                          {instagramUserInfo.business_category && (
+                            <div>
+                              <span className="text-gray-500">Category:</span>
+                              <p className="font-medium">
+                                {instagramUserInfo.business_category}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-gray-500">Account Type:</span>
+                            <p className="font-medium">
+                              {instagramUserInfo.is_business_account
+                                ? "Business Account"
+                                : "Personal Account"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+
+
+                  {/* Latest Posts - Instagram Style */}
+                  {instagramUserInfo.latest_posts &&
+                    instagramUserInfo.latest_posts.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-semibold text-gray-700 mb-4 block">
+                          Latest Posts
+                        </Label>
+                        {instagramUserInfo.latest_posts.map(
+                          (post: any, index: number) => (
+                            <div
+                              key={index}
+                              className="bg-white border border-gray-200 rounded-lg shadow-sm mb-6 max-w-lg mx-auto"
+                            >
+                              {/* Post Header */}
+                              <div className="flex items-center justify-between p-3">
+                                <div className="flex items-center space-x-3">
+                                  <img
+                                    src={`https://images.weserv.nl/?url=${encodeURIComponent(
+                                      (instagramUserInfo.profile_pic_url_hd || instagramUserInfo.profile_pic_url).replace(
+                                        /^https?:\/\//,
+                                        ""
+                                      )
+                                    )}`}
+                                    alt={instagramUserInfo.username}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+
+                                  <div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-semibold text-sm">
+                                        {instagramUserInfo.username}
+                                      </span>
+                                      {instagramUserInfo.is_verified && (
+                                        <svg
+                                          className="w-3 h-3 text-blue-500"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(
+                                        post.timestamp * 1000,
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="p-1"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </div>
+
+                              {/* Post Image Placeholder */}
+                              <div className="relative">
+                                {/* Live Instagram Embed */}
+                                <div className="relative">
+                                  <iframe
+                                    src={`https://www.instagram.com/p/${post.url
+                                      .split("/")
+                                      .filter(Boolean)
+                                      .pop()}/embed`}
+                                    className="w-full aspect-square border-none rounded-t-lg"
+                                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                    loading="lazy"
+                                  />
+                                </div>
+
+                                {post.videoViewCount > 0 && (
+                                  <div className="absolute top-3 right-3 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    {post.videoViewCount?.toLocaleString()}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Post Actions */}
+                              <div className="p-3">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center space-x-4">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="p-0 hover:bg-transparent"
+                                    >
+                                      <Heart className="w-6 h-6 hover:text-red-500 transition-colors" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="p-0 hover:bg-transparent"
+                                    >
+                                      <MessageCircle className="w-6 h-6 hover:text-gray-600 transition-colors" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="p-0 hover:bg-transparent"
+                                    >
+                                      <Share className="w-6 h-6 hover:text-gray-600 transition-colors" />
+                                    </Button>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-0 hover:bg-transparent"
+                                  >
+                                    <Bookmark className="w-6 h-6 hover:text-gray-600 transition-colors" />
+                                  </Button>
+                                </div>
+
+                                {/* Likes Count */}
+                                <div className="mb-2">
+                                  <span className="font-semibold text-sm">
+                                    {post.likesCount?.toLocaleString()} likes
+                                  </span>
+                                </div>
+
+                                {/* Caption */}
+                                <div className="mb-2">
+                                  <span className="font-semibold text-sm mr-2">
+                                    {instagramUserInfo.username}
+                                  </span>
+                                  <span className="text-sm">
+                                    {post.caption}
+                                  </span>
+                                </div>
+
+                                {/* Comments Count */}
+                                {post.commentsCount > 0 && (
+                                  <div className="mb-2">
+                                    <button className="text-sm text-gray-500 hover:text-gray-700">
+                                      View all{" "}
+                                      {post.commentsCount?.toLocaleString()}{" "}
+                                      comments
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Time and View on Instagram */}
+                                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                  <span className="text-xs text-gray-500 uppercase tracking-wide">
+                                    {new Date(
+                                      post.timestamp * 1000,
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </span>
+                                  <a
+                                    href={post.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    View on Instagram
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Other Tabs - Placeholder Content */}
         <TabsContent value="notifications">
           <Card>
@@ -560,6 +1007,45 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Instagram Integration */}
+          <Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <Instagram className="w-5 h-5 text-pink-500" />
+      <span>Instagram Integration</span>
+    </CardTitle>
+    <p className="text-sm text-muted-foreground">
+      Connect your Instagram Business account via Meta.
+    </p>
+  </CardHeader>
+
+  <CardContent className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">
+        {instagramConnected ? "✅ Connected" : "❌ Not Connected"}
+      </div>
+      {instagramUsername && (
+        <p className="text-xs text-muted-foreground">@{instagramUsername}</p>
+      )}
+    </div>
+
+    <Button
+      onClick={async () => {
+        const connectUrl = await InstagramService.getInstagramConnectUrl(
+          userInfo.user_id,
+        );
+        window.open(connectUrl, "_blank");
+      }}
+      size="sm"
+      variant={instagramConnected ? "outline" : "default"}
+    >
+      {instagramConnected ? "Reconnect" : "Connect"}
+    </Button>
+  </CardContent>
+</Card>
+
+
 
           {/* Backup Settings */}
           <Card>

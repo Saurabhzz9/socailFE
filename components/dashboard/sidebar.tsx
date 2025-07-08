@@ -38,6 +38,12 @@ const navigation = [
     current: false,
   },
   {
+    name: "Connections",
+    icon: Users,
+    href: "/dashboard/connections",
+    current: false,
+  },
+  {
     name: "Backup Manager",
     icon: Database,
     href: "/dashboard/backup",
@@ -172,7 +178,7 @@ export function Sidebar() {
           </div>
 
           {/* Agents */}
-          <div>
+          {/* <div>
             {!isCollapsed && (
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 AGENTS
@@ -195,7 +201,7 @@ export function Sidebar() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Admin Tools */}
           <div>
@@ -225,26 +231,35 @@ export function Sidebar() {
             </ul>
           </div>
 
-          {/* Connections */}
+          {/* Platform Status */}
           <div>
             {!isCollapsed && (
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                CONNECTIONS
+                PLATFORM STATUS
               </h3>
             )}
             <ul className="space-y-2">
-              {connections.map((connection) => (
-                <li key={connection.name}>
-                  <a
-                    href="#"
-                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                    title={isCollapsed ? connection.name : undefined}
-                  >
-                    <connection.icon className="w-5 h-5 mr-3" />
-                    {!isCollapsed && connection.name}
-                  </a>
-                </li>
-              ))}
+              {connections.map((connection, index) => {
+                const isConnected = index < 2; // Instagram and YouTube connected
+                return (
+                  <li key={connection.name}>
+                    <div
+                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg"
+                      title={isCollapsed ? connection.name : undefined}
+                    >
+                      <connection.icon className="w-5 h-5 mr-3" />
+                      {!isCollapsed && (
+                        <>
+                          <span className="flex-1">{connection.name}</span>
+                          <div
+                            className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-300"}`}
+                          ></div>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </nav>

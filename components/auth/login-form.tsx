@@ -13,14 +13,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import axios from "axios";
+import { AuthService } from "@/lib/services";
 import Link from "next/link";
 import Image from "next/image";
-import image2 from "@/public/favicon.ico"
+import image2 from "@/public/favicon.ico";
 import { ArrowLeft, Shield, Zap, Users, Sparkles } from "lucide-react";
 
 const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -43,42 +43,30 @@ export function LoginForm({
   const onSubmit = async (userData: z.infer<typeof loginSchema>) => {
     setLoading(true);
     try {
-      const resp = await axios.post(
-        "http://localhost:8080/api/v1/auth/login", // ✅ Correct endpoint
-        {
-          email: userData.username, // ✅ send email as `email`
-          password: userData.password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-  
-      if (resp.data) {
-        const token = resp.data.token;
-        toast.success("🎉 Welcome back!");
-        setToken(token);
-        router.push("/dashboard");
-      }
-    } catch (error) {
+      const response = await AuthService.login({
+        email: userData.email,
+        password: userData.password,
+      });
+
+      toast.success("🎉 Welcome back!");
+      setToken(response.token);
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error(`Error while logging in`, error);
-      toast.error("Invalid credentials. Please try again.");
+      toast.error(error.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="flex w-full h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 relative overflow-hidden">
-
-    {/* Glassmorphic Background Elements */}
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl"></div>
-      <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-400/10 rounded-full blur-3xl"></div>
-    </div>
+      {/* Glassmorphic Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-400/10 rounded-full blur-3xl"></div>
+      </div>
       {/* Left Side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 relative z-10">
         <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl p-10 py-14 border border-white/30 shadow-2xl shadow-black/10">
@@ -114,27 +102,26 @@ export function LoginForm({
             </p>
           </div>
 
-
           {/* Login Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
               <Label
-                htmlFor="username"
+                htmlFor="email"
                 className="text-sm font-medium text-gray-700 mb-2 block"
               >
-                Username
+                Email
               </Label>
               <Input
-                id="username"
+                id="email"
                 className="w-full px-4 py-3 rounded-xl bg-white/70 backdrop-blur-sm border border-white/30 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 shadow-inner"
-                type="text"
-                placeholder="Enter your username"
-                {...register("username")}
+                type="email"
+                placeholder="Enter your email"
+                {...register("email")}
                 required
               />
-              {errors.username && (
+              {errors.email && (
                 <p className="text-sm text-red-500 mt-1">
-                  {errors.username.message}
+                  {errors.email.message}
                 </p>
               )}
             </div>
@@ -240,7 +227,6 @@ export function LoginForm({
 
       {/* Right Side - Benefits & Testimonial */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 text-white p-12 items-center">
-
         <div className="max-w-lg">
           <Badge className="mb-6 bg-white/20 text-white border-white/30">
             ⚡ Join 10,000+ creators

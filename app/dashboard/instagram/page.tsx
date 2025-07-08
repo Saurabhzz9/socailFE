@@ -13,8 +13,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { createPortal } from "react-dom";
 import { parseJwt } from "@/lib/utils";
-import { storeInstagramUserInfo, uploadToS3 } from "@/lib/api";
+import { InstagramService, GoogleDriveService } from "@/lib/services";
+import { useGoogleDriveConnection, useInstagramReels } from "@/hooks/use-api";
+import { uploadToS3 } from "@/lib/api";
 import { toast } from "sonner";
+import { AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GoogleDriveIntegration } from "@/components/dashboard/google-drive-integration";
 
 // Define a type for a Reel
 type Reel = {
@@ -184,6 +189,7 @@ export default function InstagramDownloader() {
   >({});
 
   const userId = token ? parseJwt(token).user_id : undefined;
+  const { isConnected: isDriveConnected } = useGoogleDriveConnection();
 
   // Save username to localStorage when it changes
   useEffect(() => {
@@ -298,49 +304,69 @@ export default function InstagramDownloader() {
     };
   }, [reels, token]);
 
-  // Fetch reels from /api/scraper/instagram/reels
+  // Fetch reels using static data for now
   const fetchReels = async () => {
+    if (!username) {
+      setError("Please enter a username");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setReels([]);
     setSelected([]);
+
     try {
-      const resp = await fetch(
-        "http://localhost:8080/api/scraper/instagram/reels",
+      // Using static data for now - API commented out
+      const staticReelsData = [
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            user_id: username, // username as user_id (string)
-            limit: limit,
-          }),
+          id: 1,
+          caption: "Amazing sunset vibes 🌅 #sunset #nature #photography",
+          likes: 1234,
+          views: 5678,
+          playCount: 2341,
+          commentCount: 45,
+          reel_url: "https://example.com/reel1.mp4",
+          instagram_username: username,
+          timestamp: Date.now() / 1000,
+          thumbnail:
+            "https://via.placeholder.com/300x400/FF6B6B/FFFFFF?text=Reel+1",
         },
+        {
+          id: 2,
+          caption: "Coffee time ☕ Starting the day right! #coffee #morning",
+          likes: 890,
+          views: 3456,
+          playCount: 1567,
+          commentCount: 23,
+          reel_url: "https://example.com/reel2.mp4",
+          instagram_username: username,
+          timestamp: Date.now() / 1000 - 86400,
+          thumbnail:
+            "https://via.placeholder.com/300x400/4ECDC4/FFFFFF?text=Reel+2",
+        },
+        {
+          id: 3,
+          caption: "Weekend workout session 💪 #fitness #motivation #gym",
+          likes: 2156,
+          views: 8901,
+          playCount: 3789,
+          commentCount: 67,
+          reel_url: "https://example.com/reel3.mp4",
+          instagram_username: username,
+          timestamp: Date.now() / 1000 - 172800,
+          thumbnail:
+            "https://via.placeholder.com/300x400/45B7D1/FFFFFF?text=Reel+3",
+        },
+      ];
+
+      setReels(staticReelsData);
+      toast.success(
+        `Fetched ${staticReelsData.length} reels successfully! (Static data)`,
       );
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to fetch reels");
-      }
-      const data = await resp.json();
-      // Assume data.reels is an array of reels
-      // Map to Reel type (add id if not present)
-      const reelsData = (data.reels || []).map((r: any, idx: number) => ({
-        id: idx + 1,
-        caption: r.caption,
-        likes: r.likes,
-        views: r.views,
-        playCount: r.play_count,
-        commentCount: r.comment_count ?? r.comments,
-        reel_url: r.reel_url || r.reelUrl || r.video_url || r.videoUrl,
-        instagram_username: username,
-        timestamp: r.timestamp,
-        thumbnail: r.thumbnail,
-      }));
-      setReels(reelsData);
     } catch (e: any) {
       setError(e.message || "Unknown error");
+      toast.error(`Failed to fetch reels: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -355,62 +381,56 @@ export default function InstagramDownloader() {
   // Get selected reels
   const selectedReels = reels.filter((r) => selected.includes(r.id));
 
-  // Upload to Drive logic
+  // Upload to Drive using Instagram service
   const uploadToDrive = async () => {
+    if (!token || !userId) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    if (selectedReels.length === 0) {
+      toast.error("No reels selected");
+      return;
+    }
+
+    // Check Google Drive connection first
+    if (!isDriveConnected) {
+      toast.error("Google Drive not connected. Please connect first.");
+      return;
+    }
+
     setUploading(true);
     setUploadError(null);
     setUploadSuccess(false);
+
     try {
-      if (!userId) throw new Error("User ID not found in token");
-      if (selectedReels.length === 0) throw new Error("No reels selected");
+      // Using static response for now - API commented out
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate upload time
 
-      // Prepare reels array for API - matching exact format from curl example
-      const reelsPayload = selectedReels.map((r) => ({
-        instagram_username: r.instagram_username || username,
-        reel_url: r.reel_url,
-        caption: r.caption,
-        likes: r.likes,
-        views: r.views,
-        timestamp: r.timestamp || Math.floor(Date.now() / 1000),
-        play_count: r.playCount,
-        comment_count: r.commentCount,
-        thumbnail: r.thumbnail,
-      }));
-
-      const resp = await fetch("http://localhost:8080/api/upload/reels", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          reels: reelsPayload,
-        }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to upload reels to drive");
-      }
       setUploadSuccess(true);
+      toast.success(
+        `Successfully uploaded ${selectedReels.length} reels to Google Drive! (Static response)`,
+      );
     } catch (e: any) {
       setUploadError(e.message || "Unknown error");
+      toast.error(`Upload failed: ${e.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // Store Instagram user info
+  // Store Instagram user info using static response for now
   const handleStoreUserInfo = async () => {
-    if (!token || !username) {
+    if (!username) {
       toast.error("Please enter a username first");
       return;
     }
 
     setStoringUserInfo(true);
     try {
-      const result = await storeInstagramUserInfo(token, username);
-      toast.success("User info stored successfully!");
+      // Using static response for now - API commented out
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      toast.success("User info stored successfully! (Static response)");
     } catch (error: any) {
       toast.error(`Failed to store user info: ${error.message}`);
     } finally {
@@ -448,6 +468,9 @@ export default function InstagramDownloader() {
         </p>
       </div>
 
+      {/* Google Drive Connection Status */}
+      <GoogleDriveIntegration />
+
       <div className="flex gap-6">
         {/* Main section */}
         <div className="flex-1 space-y-4">
@@ -481,7 +504,7 @@ export default function InstagramDownloader() {
                   max={50}
                 />
                 <Button onClick={fetchReels} disabled={loading || !username}>
-                  {loading ? "Fetching..." : "Fetch"}
+                  {loading ? "Fetching..." : "Fetch (Static Data)"}
                 </Button>
               </div>
               {error && <div className="text-red-500 mb-2">{error}</div>}

@@ -9,7 +9,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
+import { AuthService } from "@/lib/services";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -20,11 +20,14 @@ import { ArrowLeft } from "lucide-react";
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   username: z.string().min(5, "Username must be at least 5 characters"),
-  displayName: z.string().min(3, "Display name must be at least 3 characters"),
+  full_name: z.string().min(3, "Full name must be at least 3 characters"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export function SignupForm({ className, ...props }: React.ComponentPropsWithoutRef<"form">) {
+export function SignupForm({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<"form">) {
   const [loading, setLoading] = useState(false);
   const { setToken } = useAuth();
   const router = useRouter();
@@ -40,30 +43,26 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
   const onSubmitForm = async (userData: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-      const resp = await axios.post("http://localhost:8080/api/v1/auth/register", userData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await AuthService.register({
+        email: userData.email,
+        username: userData.username,
+        full_name: userData.full_name,
+        password: userData.password,
       });
-  
-      if (resp.data) {
-        const token = resp.data.token;
-        setToken(token);
-        toast.success("Successfully registered");
-        router.push("/dashboard");
-      }
-    } catch (error) {
+
+      setToken(response.token);
+      toast.success("Successfully registered!");
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error(`Error during signup`, error);
-      toast.error("Error while signing up");
+      toast.error(error.message || "Error while signing up");
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="flex w-full h-screen overflow-y-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black relative">
-
-
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
@@ -77,7 +76,7 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
           onSubmit={handleSubmit(onSubmitForm)}
           className={cn(
             "w-full max-w-md bg-white/10 backdrop-blur-xl rounded-3xl p-10 py-14 border border-white/20 shadow-2xl shadow-black/10 text-white space-y-6",
-            className
+            className,
           )}
           {...props}
         >
@@ -93,20 +92,29 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-6">
               <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xl shadow-black/25">
-                <Image src="/favicon.ico" alt="Quolo Logo" width={48} height={48} />
+                <Image
+                  src="/favicon.ico"
+                  alt="Quolo Logo"
+                  width={48}
+                  height={48}
+                />
               </div>
               <span className="text-3xl font-bold bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
                 Quolo
               </span>
             </div>
             <h1 className="text-2xl font-bold mb-1">Create your account</h1>
-            <p className="text-gray-300 text-sm">Please fill in the details below</p>
+            <p className="text-gray-300 text-sm">
+              Please fill in the details below
+            </p>
           </div>
 
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-sm text-gray-200">Email</Label>
+              <Label htmlFor="email" className="text-sm text-gray-200">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -115,11 +123,17 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
                 {...register("email")}
                 required
               />
-              {errors.email && <p className="text-sm text-red-400 mt-1">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="text-sm text-red-400 mt-1">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="username" className="text-sm text-gray-200">Username</Label>
+              <Label htmlFor="username" className="text-sm text-gray-200">
+                Username
+              </Label>
               <Input
                 id="username"
                 type="text"
@@ -128,24 +142,36 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
                 {...register("username")}
                 required
               />
-              {errors.username && <p className="text-sm text-red-400 mt-1">{errors.username.message}</p>}
+              {errors.username && (
+                <p className="text-sm text-red-400 mt-1">
+                  {errors.username.message}
+                </p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="displayName" className="text-sm text-gray-200">Display Name</Label>
+              <Label htmlFor="full_name" className="text-sm text-gray-200">
+                Full Name
+              </Label>
               <Input
-                id="displayName"
+                id="full_name"
                 type="text"
                 placeholder="John Doe"
                 className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder:text-gray-300 border border-white/20 focus:border-blue-500 focus:ring-blue-500/30 transition"
-                {...register("displayName")}
+                {...register("full_name")}
                 required
               />
-              {errors.displayName && <p className="text-sm text-red-400 mt-1">{errors.displayName.message}</p>}
+              {errors.full_name && (
+                <p className="text-sm text-red-400 mt-1">
+                  {errors.full_name.message}
+                </p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-sm text-gray-200">Password</Label>
+              <Label htmlFor="password" className="text-sm text-gray-200">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -154,7 +180,11 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
                 {...register("password")}
                 required
               />
-              {errors.password && <p className="text-sm text-red-400 mt-1">{errors.password.message}</p>}
+              {errors.password && (
+                <p className="text-sm text-red-400 mt-1">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
           </div>
 
@@ -170,7 +200,10 @@ export function SignupForm({ className, ...props }: React.ComponentPropsWithoutR
           {/* Already have account */}
           <div className="text-center mt-6 text-sm text-gray-400">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-blue-400 hover:underline font-semibold">
+            <Link
+              href="/auth/login"
+              className="text-blue-400 hover:underline font-semibold"
+            >
               Log in
             </Link>
           </div>

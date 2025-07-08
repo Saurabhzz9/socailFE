@@ -38,14 +38,140 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-// Instagram Store User Info API
-export async function storeInstagramUserInfo(token: string, username: string) {
-  const response = await fetch(`${API_BASE_URL}/api/instagram/store-userinfo`, {
+// =============================================================================
+// AUTHENTICATION APIs
+// =============================================================================
+
+// Register a new user
+export async function registerUser(userData: {
+  full_name: string;
+  email: string;
+  username: string;
+  password: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+  return handleApiResponse<{ token: string }>(response);
+}
+
+// Login user with email and password
+export async function loginUser(credentials: {
+  email: string;
+  password: string;
+}) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(credentials),
+  });
+  return handleApiResponse<{ token: string }>(response);
+}
+
+// Google OAuth URLs
+export function getGoogleAuthUrl() {
+  return `${API_BASE_URL}/api/v1/auth/google`;
+}
+
+export function getGoogleDriveAuthUrl(user_id: number) {
+  return `${API_BASE_URL}/api/v1/auth/google/drive`;
+}
+
+// Clear Google Drive tokens
+export async function clearGoogleDriveTokens(token: string, userId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/auth/google/drive/clear`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ user_id: userId }),
+    },
+  );
+  return handleApiResponse<{
+    message: string;
+    reconnect_url: string;
+  }>(response);
+}
+
+// =============================================================================
+// INSTAGRAM APIs
+// =============================================================================
+
+// Fetch Instagram user profile information
+export async function fetchInstagramUserInfo(token: string, username: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/instagram/user-info`, {
     method: "POST",
     headers: getAuthHeaders(token),
     body: JSON.stringify({ username }),
   });
-  return handleApiResponse<{ message: string }>(response);
+  return handleApiResponse<{ info: InstagramUserInfo }>(response);
+}
+
+// Fetch Instagram user reels
+export async function fetchInstagramUserReels(
+  token: string,
+  userId: string,
+  limit = 10,
+) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/instagram/user-reels`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ user_id: userId, limit }),
+  });
+  return handleApiResponse<InstagramReelsResponse>(response);
+}
+
+// Upload Instagram reels to Google Drive
+export async function uploadInstagramReels(
+  token: string,
+  data: UploadReelsRequest,
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/instagram/upload-reels`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(data),
+    },
+  );
+  return handleApiResponse<UploadReelsResponse>(response);
+}
+
+// Check Google Drive connection status
+export async function checkGoogleDriveConnection(
+  token: string,
+  userId: number,
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/instagram/check-drive-connection`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ user_id: userId }),
+    },
+  );
+  return handleApiResponse<GoogleDriveConnectionStatus>(response);
+}
+
+// Store Instagram user info in database
+export async function storeInstagramUserInfo(token: string, username: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/instagram/store-user-info`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ username }),
+    },
+  );
+  return handleApiResponse<{ message: string; data: InstagramUserInfo }>(
+    response,
+  );
 }
 
 // Get User Reels API
@@ -93,11 +219,6 @@ export async function uploadToS3(token: string, videoUrl: string) {
   return handleApiResponse<{ s3_url: string }>(response);
 }
 
-// Google Drive OAuth
-export function getGoogleDriveAuthUrl(userId: number) {
-  return `${API_BASE_URL}/api/auth/google/drive?user_id=${userId}`;
-}
-
 // Health Check API (no auth required)
 export async function healthCheck() {
   try {
@@ -132,15 +253,19 @@ export async function triggerUserInfoTest(token: string) {
   return handleApiResponse<{ message: string }>(response);
 }
 
-export async function fetchInstagramUserInfo(username: string) {
-  const token = localStorage.getItem("qoulo_token"); // or from context/state/auth hook
+// =============================================================================
+// LEGACY/COMPATIBILITY APIs (keeping for backward compatibility)
+// =============================================================================
+
+export async function fetchInstagramUserInfoLegacy(username: string) {
+  const token = localStorage.getItem("qoulo_token");
 
   if (!token) {
     throw new Error("No token found. User might not be logged in.");
   }
 
   const res = await fetch(
-    `http://localhost:8080/api/dashboard/user-info?username=${encodeURIComponent(username)}`,
+    `${API_BASE_URL}/api/dashboard/user-info?username=${encodeURIComponent(username)}`,
     {
       headers: getAuthHeaders(token),
     },
@@ -155,9 +280,10 @@ export async function fetchInstagramUserInfo(username: string) {
   return res.json();
 }
 
+// =============================================================================
+// TYPE DEFINITIONS
+// =============================================================================
 
-
-// Types
 export interface UserReel {
   id: number;
   file_name: string;
@@ -184,4 +310,67 @@ export interface AutoBackupResponse {
       shareable_link: string;
     }>;
   };
+}
+
+// Instagram API Types
+export interface InstagramUserInfo {
+  id: string;
+  username: string;
+  full_name: string;
+  biography: string;
+  followers_count: number;
+  following_count: number;
+  media_count: number;
+  profile_pic_url: string;
+  is_verified: boolean;
+  is_private: boolean;
+}
+
+export interface InstagramReel {
+  instagram_username: string;
+  reel_url: string;
+  caption: string;
+  likes: number;
+  views: number;
+  timestamp: number;
+  play_count: number;
+  comment_count: number;
+  thumbnail: string;
+}
+
+export interface InstagramReelsResponse {
+  reels: InstagramReel[];
+  total_count: number;
+}
+
+export interface UploadReelsRequest {
+  user_id: number;
+  reels: InstagramReel[];
+  custom_name?: string;
+}
+
+export interface UploadedReel {
+  instagram_username: string;
+  shareable_link: string;
+}
+
+export interface UploadReelsResponse {
+  message: string;
+  uploaded_reels: UploadedReel[];
+}
+
+export interface GoogleDriveConnectionStatus {
+  status:
+    | "CONNECTED"
+    | "INCOMPLETE_CONNECTION"
+    | "NOT_CONNECTED"
+    | "TOKEN_EXPIRED";
+  access_token_valid: boolean;
+  refresh_token_available: boolean;
+  token_expiry?: string;
+  minutes_until_expiry?: number;
+  auto_refresh_available: boolean;
+  needs_reconnection?: boolean;
+  action_required?: string;
+  google_drive_url?: string;
 }
