@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import type React from "react";
+import { useTheme } from "next-themes";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { parseJwt } from "@/lib/utils";
-import { updateBackupFrequency, getGoogleDriveAuthUrl } from "@/lib/api";
+import { getProfile, updateProfile } from "@/lib/api";
 import { InstagramService } from "@/lib/services";
 import { toast } from "sonner";
 import {
@@ -31,24 +33,11 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-type UserProfile = {
-  id: number;
-  username: string;
-  email: string;
-  display_name: string;
-  createdAt: string;
-  planID: number;
-  googleID?: string;
-  google_drive_access_token?: string;
-  googleDriveRefreshToken?: string;
-  googleDriveTokenExpiry?: string;
-  passwordHash?: string;
-};
+import { GoogleDriveIntegration } from "@/components/dashboard/google-drive-integration";
 
 export default function SettingsPage() {
   const { token } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -68,12 +57,21 @@ export default function SettingsPage() {
   const [instagramLoading, setInstagramLoading] = useState(false);
   const [instagramConnected, setInstagramConnected] = useState(false);
 
-
-
   const userInfo = token ? parseJwt(token) : null;
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const initialTab = searchParams?.get("tab") || "profile";
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (searchParams) {
+      const tab = searchParams.get("tab");
+      if (tab && tab !== activeTab) setActiveTab(tab);
+    }
+  }, [typeof window !== "undefined" ? window.location.search : ""]);
+
   useEffect(() => {
     if (!token || !userInfo?.user_id) return;
-  
+
     const checkConnection = async () => {
       try {
         const result = await InstagramService.checkInstagramConnection(
@@ -86,51 +84,23 @@ export default function SettingsPage() {
         console.error("Failed to check Instagram connection:", err);
       }
     };
-  
+
     checkConnection();
   }, [token, userInfo]);
-  
 
-  // Using static data for now - API commented out
   useEffect(() => {
-    const loadStaticProfile = async () => {
-      if (!userInfo?.user_id) return;
-
-      try {
-        setLoading(true);
-
-        // Static user profile data
-        const staticData: UserProfile = {
-          id: userInfo.user_id,
-          username: "johndoe",
-          email: userInfo.email || "user@example.com",
-          display_name: "John Doe",
-          createdAt: "2024-01-15T10:30:00Z",
-          planID: 1,
-          googleID: undefined,
-          google_drive_access_token: undefined,
-          googleDriveRefreshToken: undefined,
-          googleDriveTokenExpiry: undefined,
-          passwordHash: undefined,
-        };
-
-        setUserProfile(staticData);
-        setBackupFrequency("off");
-
-        // Simulate loading time
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        toast.success("Profile loaded successfully (Static data)");
-      } catch (error: any) {
-        console.error("Error loading profile:", error);
+    if (!token) return;
+    setLoading(true);
+    getProfile(token)
+      .then((data) => {
+        setUserProfile(data);
+        setBackupFrequency(data.backup_frequency || "off");
+      })
+      .catch((error) => {
         toast.error(`Failed to load profile: ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStaticProfile();
-  }, [userInfo?.user_id, userInfo?.email]);
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
 
   // Update password using the provided API
   const handlePasswordUpdate = async (e: React.FormEvent) => {
@@ -164,6 +134,45 @@ export default function SettingsPage() {
     }
   };
 
+  // Add after handlePasswordUpdate and before handleFrequencyUpdate
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !userProfile) return;
+    setUpdating(true);
+    try {
+      const updateData: any = {
+        full_name: userProfile.full_name,
+        username: userProfile.username,
+        company: userProfile.company,
+        timezone: userProfile.timezone,
+        profile_image_url: userProfile.profile_image_url,
+        profile_image: userProfile.profile_image,
+        backup_frequency: backupFrequency,
+      };
+      // Only send password if not Google user and provided
+      if (!userProfile.is_google_user && passwordData.newPassword) {
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+          toast.error("New passwords don't match");
+          setUpdating(false);
+          return;
+        }
+        if (passwordData.newPassword.length < 8) {
+          toast.error("Password must be at least 8 characters long");
+          setUpdating(false);
+          return;
+        }
+        updateData.password = passwordData.newPassword;
+      }
+      await updateProfile(token, updateData);
+      toast.success("Profile updated successfully");
+      setPasswordData({ newPassword: "", confirmPassword: "" });
+    } catch (error: any) {
+      toast.error(`Failed to update profile: ${error.message}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   // Handle backup frequency update
   const handleFrequencyUpdate = async (
     frequency: "off" | "weekly" | "monthly",
@@ -172,7 +181,8 @@ export default function SettingsPage() {
 
     setFrequencyLoading(true);
     try {
-      await updateBackupFrequency(token, frequency);
+      // Assuming updateProfile handles backup frequency update
+      await updateProfile(token, { backup_frequency: frequency });
       setBackupFrequency(frequency);
       toast.success(`Backup frequency updated to ${frequency}`);
     } catch (error: any) {
@@ -277,10 +287,10 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-foreground mb-2">
             Failed to load profile
           </h2>
-          <p className="text-gray-600">Please try refreshing the page</p>
+          <p className="text-muted-foreground">Please try refreshing the page</p>
         </div>
       </div>
     );
@@ -290,14 +300,14 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-muted-foreground">
           Manage your account and application preferences.
         </p>
       </div>
 
       {/* Settings Tabs */}
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center space-x-2">
             <User className="w-4 h-4" />
@@ -372,10 +382,10 @@ export default function SettingsPage() {
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input
                     id="fullName"
-                    value={userProfile.display_name || ""}
+                    value={userProfile.full_name || ""}
                     onChange={(e) =>
-                      setUserProfile((prev) =>
-                        prev ? { ...prev, display_name: e.target.value } : null,
+                      setUserProfile((prev: any) =>
+                        prev ? { ...prev, full_name: e.target.value } : null,
                       )
                     }
                   />
@@ -387,7 +397,6 @@ export default function SettingsPage() {
                     id="email"
                     value={userProfile.email || ""}
                     disabled
-                    className="bg-gray-50"
                   />
                 </div>
 
@@ -397,28 +406,48 @@ export default function SettingsPage() {
                     id="username"
                     value={userProfile.username || ""}
                     disabled
-                    className="bg-gray-50"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option>Eastern Time (UTC-5)</option>
-                    <option>Central Time (UTC-6)</option>
-                    <option>Mountain Time (UTC-7)</option>
-                    <option>Pacific Time (UTC-8)</option>
+                  <select
+                    id="timezone"
+                    value={userProfile.timezone || ""}
+                    onChange={(e) =>
+                      setUserProfile((prev: any) =>
+                        prev ? { ...prev, timezone: e.target.value } : null,
+                      )
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+
+                  >
+                    <option value="">Select Timezone</option>
+                    <option value="UTC-5">Eastern Time (UTC-5)</option>
+                    <option value="UTC-6">Central Time (UTC-6)</option>
+                    <option value="UTC-7">Mountain Time (UTC-7)</option>
+                    <option value="UTC-8">Pacific Time (UTC-8)</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="company">Company</Label>
-                <Input id="company" placeholder="Quolo Agency" />
+                <Input
+                  id="company"
+                  value={userProfile.company || ""}
+                  onChange={(e) =>
+                    setUserProfile((prev: any) =>
+                      prev ? { ...prev, company: e.target.value } : null,
+                    )
+                  }
+                />
               </div>
 
               <div className="flex justify-end">
-                <Button>Save Changes</Button>
+                <Button onClick={handleProfileUpdate} disabled={updating}>
+                  {updating ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -526,33 +555,33 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">
+                  <Label className="text-sm font-medium text-foreground">
                     User ID
                   </Label>
                   <p className="text-sm">{userProfile.id}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">
+                  <Label className="text-sm font-medium text-foreground">
                     Plan ID
                   </Label>
-                  <p className="text-sm">{userProfile.planID}</p>
+                  <p className="text-sm">{userProfile.plan_id || userProfile.planID}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">
+                  <Label className="text-sm font-medium text-foreground">
                     Account Created
                   </Label>
                   <p className="text-sm">
-                    {userProfile.createdAt
-                      ? new Date(userProfile.createdAt).toLocaleDateString()
+                    {userProfile.created_at
+                      ? new Date(userProfile.created_at).toLocaleDateString()
                       : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">
+                  <Label className="text-sm font-medium text-foreground">
                     Google Connected
                   </Label>
                   <p className="text-sm">
-                    {userProfile.googleID ? "Yes" : "No"}
+                    {userProfile.is_google_user ? "Yes" : "No"}
                   </p>
                 </div>
               </div>
@@ -598,12 +627,14 @@ export default function SettingsPage() {
                       {instagramUserInfo.profile_pic_url_hd ? (
                         <img
                           src={`https://images.weserv.nl/?url=${encodeURIComponent(
-                            instagramUserInfo.profile_pic_url_hd.replace(/^https?:\/\//, "")
+                            instagramUserInfo.profile_pic_url_hd.replace(
+                              /^https?:\/\//,
+                              "",
+                            ),
                           )}`}
                           alt={instagramUserInfo.username}
                           className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                         />
-
                       ) : (
                         <div className="w-20 h-20 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
                           <User className="w-10 h-10 text-white" />
@@ -612,7 +643,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-xl">
+                        <h3 className="font-bold text-xl text-foreground">
                           {instagramUserInfo.full_name}
                         </h3>
                         {instagramUserInfo.is_verified && (
@@ -629,7 +660,7 @@ export default function SettingsPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-gray-600 font-medium">
+                      <p className="text-muted-foreground font-medium">
                         @{instagramUserInfo.username}
                       </p>
                       <div className="flex gap-2 mt-2">
@@ -658,35 +689,35 @@ export default function SettingsPage() {
                       <div className="font-bold text-2xl text-blue-600">
                         {instagramUserInfo.posts_count?.toLocaleString() || 0}
                       </div>
-                      <div className="text-sm text-gray-600">Posts</div>
+                      <div className="text-sm text-muted-foreground">Posts</div>
                     </div>
                     <div className="text-center">
                       <div className="font-bold text-2xl text-green-600">
                         {instagramUserInfo.followers_count?.toLocaleString() ||
                           0}
                       </div>
-                      <div className="text-sm text-gray-600">Followers</div>
+                      <div className="text-sm text-muted-foreground">Followers</div>
                     </div>
                     <div className="text-center">
                       <div className="font-bold text-2xl text-purple-600">
                         {instagramUserInfo.following_count?.toLocaleString() ||
                           0}
                       </div>
-                      <div className="text-sm text-gray-600">Following</div>
+                      <div className="text-sm text-muted-foreground">Following</div>
                     </div>
                     <div className="text-center">
                       <div className="font-bold text-2xl text-orange-600">
                         {instagramUserInfo.igtv_video_count?.toLocaleString() ||
                           0}
                       </div>
-                      <div className="text-sm text-gray-600">IGTV Videos</div>
+                      <div className="text-sm text-muted-foreground">IGTV Videos</div>
                     </div>
                   </div>
 
                   {/* Biography */}
                   {instagramUserInfo.biography && (
                     <div>
-                      <Label className="text-sm font-semibold text-gray-700">
+                      <Label className="text-sm font-semibold text-foreground">
                         Biography
                       </Label>
                       <p className="text-sm mt-2 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
@@ -695,43 +726,39 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-
-
                   {/* Business Information */}
                   {(instagramUserInfo.business_category ||
                     instagramUserInfo.is_business_account) && (
-                      <div>
-                        <Label className="text-sm font-semibold text-gray-700">
-                          Business Information
-                        </Label>
-                        <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                          {instagramUserInfo.business_category && (
-                            <div>
-                              <span className="text-gray-500">Category:</span>
-                              <p className="font-medium">
-                                {instagramUserInfo.business_category}
-                              </p>
-                            </div>
-                          )}
+                    <div>
+                      <Label className="text-sm font-semibold text-foreground">
+                        Business Information
+                      </Label>
+                      <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                        {instagramUserInfo.business_category && (
                           <div>
-                            <span className="text-gray-500">Account Type:</span>
+                            <span className="text-muted-foreground">Category:</span>
                             <p className="font-medium">
-                              {instagramUserInfo.is_business_account
-                                ? "Business Account"
-                                : "Personal Account"}
+                              {instagramUserInfo.business_category}
                             </p>
                           </div>
+                        )}
+                        <div>
+                          <span className="text-muted-foreground">Account Type:</span>
+                          <p className="font-medium">
+                            {instagramUserInfo.is_business_account
+                              ? "Business Account"
+                              : "Personal Account"}
+                          </p>
                         </div>
                       </div>
-                    )}
-
-
+                    </div>
+                  )}
 
                   {/* Latest Posts - Instagram Style */}
                   {instagramUserInfo.latest_posts &&
                     instagramUserInfo.latest_posts.length > 0 && (
                       <div>
-                        <Label className="text-sm font-semibold text-gray-700 mb-4 block">
+                        <Label className="text-sm font-semibold text-foreground mb-4 block">
                           Latest Posts
                         </Label>
                         {instagramUserInfo.latest_posts.map(
@@ -745,10 +772,10 @@ export default function SettingsPage() {
                                 <div className="flex items-center space-x-3">
                                   <img
                                     src={`https://images.weserv.nl/?url=${encodeURIComponent(
-                                      (instagramUserInfo.profile_pic_url_hd || instagramUserInfo.profile_pic_url).replace(
-                                        /^https?:\/\//,
-                                        ""
-                                      )
+                                      (
+                                        instagramUserInfo.profile_pic_url_hd ||
+                                        instagramUserInfo.profile_pic_url
+                                      ).replace(/^https?:\/\//, ""),
                                     )}`}
                                     alt={instagramUserInfo.username}
                                     className="w-8 h-8 rounded-full object-cover"
@@ -773,7 +800,7 @@ export default function SettingsPage() {
                                         </svg>
                                       )}
                                     </div>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-muted-foreground">
                                       {new Date(
                                         post.timestamp * 1000,
                                       ).toLocaleDateString()}
@@ -887,7 +914,7 @@ export default function SettingsPage() {
 
                                 {/* Time and View on Instagram */}
                                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                                  <span className="text-xs text-gray-500 uppercase tracking-wide">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
                                     {new Date(
                                       post.timestamp * 1000,
                                     ).toLocaleDateString("en-US", {
@@ -952,100 +979,47 @@ export default function SettingsPage() {
 
         <TabsContent value="integrations" className="space-y-6">
           {/* Google Drive Integration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Database className="w-5 h-5" />
-                <span>Google Drive Integration</span>
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Connect your Google Drive for automatic backups
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <div className="font-medium">
-                    {userProfile.google_drive_access_token
-                      ? "✅ Connected"
-                      : "❌ Not Connected"}
-                  </div>
-                  {userProfile.googleDriveTokenExpiry && (
-                    <p className="text-xs text-gray-500">
-                      Expires:{" "}
-                      {new Date(
-                        userProfile.googleDriveTokenExpiry,
-                      ).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={handleGoogleDriveConnect}
-                  variant={
-                    userProfile.google_drive_access_token
-                      ? "outline"
-                      : "default"
-                  }
-                  size="sm"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  {userProfile.google_drive_access_token
-                    ? "Reconnect"
-                    : "Connect"}
-                </Button>
-              </div>
-
-              {userProfile.googleDriveRefreshToken && (
-                <div className="text-xs text-gray-400">
-                  <Label className="text-sm font-medium text-gray-500">
-                    Refresh Token
-                  </Label>
-                  <p className="font-mono bg-gray-50 p-2 rounded">
-                    {userProfile.googleDriveRefreshToken.substring(0, 20)}...
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <GoogleDriveIntegration />
 
           {/* Instagram Integration */}
           <Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <Instagram className="w-5 h-5 text-pink-500" />
-      <span>Instagram Integration</span>
-    </CardTitle>
-    <p className="text-sm text-muted-foreground">
-      Connect your Instagram Business account via Meta.
-    </p>
-  </CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Instagram className="w-5 h-5 text-pink-500" />
+                <span>Instagram Integration</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Connect your Instagram Business account via Meta.
+              </p>
+            </CardHeader>
 
-  <CardContent className="flex items-center justify-between">
-    <div>
-      <div className="text-sm font-semibold">
-        {instagramConnected ? "✅ Connected" : "❌ Not Connected"}
-      </div>
-      {instagramUsername && (
-        <p className="text-xs text-muted-foreground">@{instagramUsername}</p>
-      )}
-    </div>
+            <CardContent className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">
+                  {instagramConnected ? "✅ Connected" : "❌ Not Connected"}
+                </div>
+                {instagramUsername && (
+                  <p className="text-xs text-muted-foreground">
+                    @{instagramUsername}
+                  </p>
+                )}
+              </div>
 
-    <Button
-      onClick={async () => {
-        const connectUrl = await InstagramService.getInstagramConnectUrl(
-          userInfo.user_id,
-        );
-        window.open(connectUrl, "_blank");
-      }}
-      size="sm"
-      variant={instagramConnected ? "outline" : "default"}
-    >
-      {instagramConnected ? "Reconnect" : "Connect"}
-    </Button>
-  </CardContent>
-</Card>
-
-
+              <Button
+                onClick={async () => {
+                  const connectUrl =
+                    await InstagramService.getInstagramConnectUrl(
+                      userInfo.user_id,
+                    );
+                  window.open(connectUrl, "_blank");
+                }}
+                size="sm"
+                variant={instagramConnected ? "outline" : "default"}
+              >
+                {instagramConnected ? "Reconnect" : "Connect"}
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Backup Settings */}
           <Card>
@@ -1129,14 +1103,158 @@ export default function SettingsPage() {
                 Customize the look and feel of your dashboard.
               </p>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Appearance settings coming soon...
-              </p>
+            <CardContent className="space-y-6">
+              <ThemeSelector />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const themes = [
+    {
+      name: "nebula-dark",
+      label: "Dark Nebula",
+      description: "Subtle purple cosmic glow",
+      preview:
+        "bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900",
+      accent: "bg-purple-500",
+    },
+    {
+      name: "cawar-orange",
+      label: "Cawar Orange",
+      description: "Vibrant orange energy",
+      preview:
+        "bg-gradient-to-br from-slate-900 via-orange-900/30 to-slate-900",
+      accent: "bg-orange-500",
+    },
+    {
+      name: "matrix-green",
+      label: "Matrix Green",
+      description: "Digital matrix vibes",
+      preview: "bg-gradient-to-br from-slate-900 via-green-900/30 to-slate-900",
+      accent: "bg-green-500",
+    },
+    {
+      name: "cyber-blue",
+      label: "Cyber Blue",
+      description: "Futuristic blue glow",
+      preview: "bg-gradient-to-br from-slate-900 via-blue-900/30 to-slate-900",
+      accent: "bg-blue-500",
+    },
+    {
+      name: "cosmic-purple",
+      label: "Cosmic Purple",
+      description: "Deep space purple vibes",
+      preview:
+        "bg-gradient-to-br from-slate-900 via-purple-800/40 to-slate-900",
+      accent: "bg-purple-600",
+    },
+    {
+      name: "fire-red",
+      label: "Fire Red",
+      description: "Intense red flame energy",
+      preview: "bg-gradient-to-br from-slate-900 via-red-900/30 to-slate-900",
+      accent: "bg-red-500",
+    },
+    {
+      name: "neon-pink",
+      label: "Neon Pink",
+      description: "Electric pink cyberpunk",
+      preview: "bg-gradient-to-br from-slate-900 via-pink-900/30 to-slate-900",
+      accent: "bg-pink-500",
+    },
+    {
+      name: "ocean-teal",
+      label: "Ocean Teal",
+      description: "Deep ocean depths",
+      preview: "bg-gradient-to-br from-slate-900 via-teal-900/30 to-slate-900",
+      accent: "bg-teal-500",
+    },
+    {
+      name: "sunset-gold",
+      label: "Sunset Gold",
+      description: "Golden hour warmth",
+      preview:
+        "bg-gradient-to-br from-slate-900 via-yellow-900/30 to-slate-900",
+      accent: "bg-yellow-500",
+    },
+    {
+      name: "light",
+      label: "Light",
+      description: "Clean and minimal",
+      preview: "bg-gradient-to-br from-white to-gray-100",
+      accent: "bg-gray-900",
+    },
+    {
+      name: "dark",
+      label: "Dark",
+      description: "Pure dark mode",
+      preview: "bg-gradient-to-br from-gray-900 to-black",
+      accent: "bg-white",
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-medium text-foreground">Color Theme</h3>
+        <p className="text-sm text-muted-foreground">
+          Choose a color theme that suits your style
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {themes.map((themeOption) => (
+          <div
+            key={themeOption.name}
+            className={`cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-105 ${
+              theme === themeOption.name
+                ? "border-primary shadow-md ring-2 ring-primary/20"
+                : "border-border hover:border-primary/50"
+            }`}
+            onClick={() => setTheme(themeOption.name)}
+          >
+            <div
+              className={`mb-3 h-20 w-full rounded-md ${themeOption.preview} relative overflow-hidden`}
+            >
+              <div
+                className={`absolute bottom-2 right-2 h-3 w-3 rounded-full ${themeOption.accent}`}
+              />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-medium text-foreground">{themeOption.label}</h4>
+              <p className="text-sm text-muted-foreground">
+                {themeOption.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg bg-muted/50 p-4">
+        <div className="flex items-center space-x-2">
+          <Palette className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            Your theme preference is saved automatically and syncs across all
+            your devices.
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

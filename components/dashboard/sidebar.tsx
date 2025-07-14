@@ -57,14 +57,6 @@ const navigation = [
   },
 ];
 
-const agents = [
-  { name: "Backup Agent", icon: Shield, active: true },
-  { name: "Trend Agent", icon: TrendingUp, active: true },
-  { name: "Outreach Agent", icon: MessageCircle, active: true },
-  { name: "IG Warmer", icon: Heart, active: true },
-  { name: "IG Support", icon: Users, active: true },
-];
-
 const tools = [
   {
     name: "Instagram Downloader",
@@ -93,57 +85,117 @@ export function Sidebar() {
     setIsCollapsed(!isCollapsed);
   };
 
+  const NavItem = ({ item, isActive }: { item: any; isActive: boolean }) => (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center text-sm font-medium rounded-xl transition-all duration-200 group relative",
+        isCollapsed ? "px-3 py-3 justify-center" : "px-4 py-3",
+        isActive
+          ? "bg-primary text-primary-foreground shadow-lg"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+      )}
+      title={isCollapsed ? item.name : undefined}
+    >
+      <item.icon className={cn("w-5 h-5", !isCollapsed && "mr-3")} />
+      {!isCollapsed && <span>{item.name}</span>}
+      {isCollapsed && (
+        <div className="absolute left-full ml-3 px-3 py-2 bg-card border border-primary/30 text-foreground text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+          {item.name}
+        </div>
+      )}
+    </Link>
+  );
+
+  const ConnectionItem = ({
+    connection,
+    index,
+  }: {
+    connection: any;
+    index: number;
+  }) => {
+    const isConnected = index < 2; // Instagram and YouTube connected
+    return (
+      <div
+        className={cn(
+          "flex items-center text-sm font-medium text-muted-foreground rounded-xl transition-all duration-200 group relative",
+          isCollapsed ? "px-3 py-3 justify-center" : "px-4 py-3",
+        )}
+        title={isCollapsed ? connection.name : undefined}
+      >
+        <connection.icon className={cn("w-5 h-5", !isCollapsed && "mr-3")} />
+        {!isCollapsed && (
+          <>
+            <span className="flex-1">{connection.name}</span>
+            <div
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400 shadow-sm" : "bg-primary/30"}`}
+            ></div>
+          </>
+        )}
+        {isCollapsed && (
+          <>
+            <div
+              className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background ${isConnected ? "bg-emerald-400" : "bg-primary/30"}`}
+            ></div>
+            <div className="absolute left-full ml-3 px-3 py-2 bg-card border border-primary/30 text-foreground text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+              {connection.name} {isConnected ? "• Connected" : "• Disconnected"}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className={cn(
-        "bg-white border-r border-gray-200 flex flex-col transition-all duration-300 relative",
-        isCollapsed ? "w-16" : "w-64",
+        "bg-card border-r border-border flex flex-col transition-all duration-300 relative shadow-xl",
+        isCollapsed ? "w-20" : "w-72",
       )}
     >
       {/* Toggle Button */}
       <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-6 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
+        className="absolute -right-3 top-6 z-10 w-7 h-7 bg-primary border border-primary/30 rounded-full flex items-center justify-center hover:opacity-80 transition-all shadow-lg"
       >
         {isCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-gray-600" />
+          <ChevronRight className="w-4 h-4 text-primary-foreground" />
         ) : (
-          <ChevronLeft className="w-4 h-4 text-gray-600" />
+          <ChevronLeft className="w-4 h-4 text-primary-foreground" />
         )}
       </button>
 
       {/* Logo */}
-      <div className="p-6 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">Q</span>
+      <div
+        className={cn(
+          "border-b border-border flex-shrink-0 transition-all duration-300",
+          isCollapsed ? "p-4" : "p-6",
+        )}
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-primary-foreground font-bold text-lg">Q</span>
           </div>
           {!isCollapsed && (
-            <span className="text-xl font-semibold text-gray-900">Quolo</span>
+            <span className="text-xl font-semibold text-foreground">Quolo</span>
           )}
         </div>
       </div>
 
       {/* Scrollable Navigation */}
-      <div className="flex-1 overflow-y-auto">
-        <nav className="px-4 py-6 space-y-8">
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <nav
+          className={cn(
+            "py-6 space-y-8 transition-all duration-300",
+            isCollapsed ? "px-2" : "px-4",
+          )}
+        >
+          {/* Main Navigation */}
           <div>
             <ul className="space-y-2">
               {navigation.map((item) => (
                 <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === item.href
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    )}
-                    title={isCollapsed ? item.name : undefined}
-                  >
-                    <item.icon className="w-5 h-5 mr-3" />
-                    {!isCollapsed && item.name}
-                  </Link>
+                  <NavItem item={item} isActive={pathname === item.href} />
                 </li>
               ))}
             </ul>
@@ -152,80 +204,30 @@ export function Sidebar() {
           {/* Tools */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-accent uppercase tracking-wider mb-3 px-1">
                 TOOLS
               </h3>
             )}
             <ul className="space-y-2">
               {tools.map((tool) => (
                 <li key={tool.name}>
-                  <Link
-                    href={tool.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === tool.href
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    )}
-                    title={isCollapsed ? tool.name : undefined}
-                  >
-                    <tool.icon className="w-5 h-5 mr-3" />
-                    {!isCollapsed && tool.name}
-                  </Link>
+                  <NavItem item={tool} isActive={pathname === tool.href} />
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Agents */}
-          {/* <div>
-            {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                AGENTS
-              </h3>
-            )}
-            <ul className="space-y-2">
-              {agents.map((agent) => (
-                <li key={agent.name}>
-                  <a
-                    href="#"
-                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                    title={isCollapsed ? agent.name : undefined}
-                  >
-                    <agent.icon className="w-5 h-5 mr-3" />
-                    {!isCollapsed && agent.name}
-                    {agent.active && !isCollapsed && (
-                      <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
-                    )}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div> */}
-
           {/* Admin Tools */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-accent uppercase tracking-wider mb-3 px-1">
                 ADMIN
               </h3>
             )}
             <ul className="space-y-2">
               {adminTools.map((tool) => (
                 <li key={tool.name}>
-                  <Link
-                    href={tool.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === tool.href
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    )}
-                    title={isCollapsed ? tool.name : undefined}
-                  >
-                    <tool.icon className="w-5 h-5 mr-3" />
-                    {!isCollapsed && tool.name}
-                  </Link>
+                  <NavItem item={tool} isActive={pathname === tool.href} />
                 </li>
               ))}
             </ul>
@@ -234,32 +236,16 @@ export function Sidebar() {
           {/* Platform Status */}
           <div>
             {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
                 PLATFORM STATUS
               </h3>
             )}
             <ul className="space-y-2">
-              {connections.map((connection, index) => {
-                const isConnected = index < 2; // Instagram and YouTube connected
-                return (
-                  <li key={connection.name}>
-                    <div
-                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg"
-                      title={isCollapsed ? connection.name : undefined}
-                    >
-                      <connection.icon className="w-5 h-5 mr-3" />
-                      {!isCollapsed && (
-                        <>
-                          <span className="flex-1">{connection.name}</span>
-                          <div
-                            className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-300"}`}
-                          ></div>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
+              {connections.map((connection, index) => (
+                <li key={connection.name}>
+                  <ConnectionItem connection={connection} index={index} />
+                </li>
+              ))}
             </ul>
           </div>
         </nav>

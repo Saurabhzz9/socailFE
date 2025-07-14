@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-const GOOGLE_AUTH_ENDPOINT = "http://localhost:8080/api/auth/google"
+const GOOGLE_AUTH_ENDPOINT = "http://localhost:8080/api/v1/auth/google"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

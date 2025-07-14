@@ -62,12 +62,12 @@ export function SignupForm({
   };
 
   return (
-    <div className="flex w-full h-screen overflow-y-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black relative">
+    <div className="flex w-full h-screen overflow-y-hidden bg-background relative">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-primary/3 rounded-full blur-3xl"></div>
       </div>
 
       {/* Centered Signup Form */}
@@ -75,14 +75,14 @@ export function SignupForm({
         <form
           onSubmit={handleSubmit(onSubmitForm)}
           className={cn(
-            "w-full max-w-md bg-white/10 backdrop-blur-xl rounded-3xl p-10 py-14 border border-white/20 shadow-2xl shadow-black/10 text-white space-y-6",
+            "w-full max-w-md bg-card/80 backdrop-blur-xl rounded-3xl p-10 py-14 border border-border shadow-2xl text-foreground space-y-6",
             className,
           )}
           {...props}
         >
           <Link
             href="/"
-            className="inline-flex items-center text-gray-300 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
@@ -91,7 +91,7 @@ export function SignupForm({
           {/* Header */}
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-6">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xl shadow-black/25">
+              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xl">
                 <Image
                   src="/favicon.ico"
                   alt="Quolo Logo"
@@ -99,12 +99,14 @@ export function SignupForm({
                   height={48}
                 />
               </div>
-              <span className="text-3xl font-bold bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
+              <span className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Quolo
               </span>
             </div>
-            <h1 className="text-2xl font-bold mb-1">Create your account</h1>
-            <p className="text-gray-300 text-sm">
+            <h1 className="text-2xl font-bold mb-1 text-foreground">
+              Create your account
+            </h1>
+            <p className="text-muted-foreground text-sm">
               Please fill in the details below
             </p>
           </div>
@@ -112,76 +114,76 @@ export function SignupForm({
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-sm text-gray-200">
+              <Label htmlFor="email" className="text-sm text-foreground">
                 Email
               </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder:text-gray-300 border border-white/20 focus:border-blue-500 focus:ring-blue-500/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 text-foreground placeholder:text-muted-foreground border border-border focus:border-primary focus:ring-primary/20 transition"
                 {...register("email")}
                 required
               />
               {errors.email && (
-                <p className="text-sm text-red-400 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.email.message}
                 </p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="username" className="text-sm text-gray-200">
+              <Label htmlFor="username" className="text-sm text-foreground">
                 Username
               </Label>
               <Input
                 id="username"
                 type="text"
                 placeholder="yourusername"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder:text-gray-300 border border-white/20 focus:border-blue-500 focus:ring-blue-500/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 text-foreground placeholder:text-muted-foreground border border-border focus:border-primary focus:ring-primary/20 transition"
                 {...register("username")}
                 required
               />
               {errors.username && (
-                <p className="text-sm text-red-400 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.username.message}
                 </p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="full_name" className="text-sm text-gray-200">
+              <Label htmlFor="full_name" className="text-sm text-foreground">
                 Full Name
               </Label>
               <Input
                 id="full_name"
                 type="text"
                 placeholder="John Doe"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder:text-gray-300 border border-white/20 focus:border-blue-500 focus:ring-blue-500/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 text-foreground placeholder:text-muted-foreground border border-border focus:border-primary focus:ring-primary/20 transition"
                 {...register("full_name")}
                 required
               />
               {errors.full_name && (
-                <p className="text-sm text-red-400 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.full_name.message}
                 </p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-sm text-gray-200">
+              <Label htmlFor="password" className="text-sm text-foreground">
                 Password
               </Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder:text-gray-300 border border-white/20 focus:border-blue-500 focus:ring-blue-500/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 text-foreground placeholder:text-muted-foreground border border-border focus:border-primary focus:ring-primary/20 transition"
                 {...register("password")}
                 required
               />
               {errors.password && (
-                <p className="text-sm text-red-400 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.password.message}
                 </p>
               )}
@@ -191,18 +193,18 @@ export function SignupForm({
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300 hover:-translate-y-0.5"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300 hover:-translate-y-0.5"
             disabled={loading}
           >
             {loading ? "Signing up..." : "Sign Up"}
           </Button>
 
           {/* Already have account */}
-          <div className="text-center mt-6 text-sm text-gray-400">
+          <div className="text-center mt-6 text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
               href="/auth/login"
-              className="text-blue-400 hover:underline font-semibold"
+              className="text-primary hover:text-primary/80 font-semibold transition-colors"
             >
               Log in
             </Link>

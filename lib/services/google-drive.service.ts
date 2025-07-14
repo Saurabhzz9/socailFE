@@ -34,14 +34,14 @@ export function getGoogleDriveAuthUrl(): string {
  * @param token - Auth token
  * @param userId - User ID
  */
-// export async function checkConnection(token: string, userId: number) {
-//   const response = await fetch(`${API_BASE_URL}/api/v1/instagram/check-drive-connection`, {
-//     method: "POST",
-//     headers: getAuthHeaders(token),
-//     body: JSON.stringify({ user_id: userId }),
-//   });
-//   return handleApiResponse<GoogleDriveConnectionStatus>(response);
-// }
+export async function checkConnection(token: string, userId: number) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/instagram/check-drive-connection`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ user_id: userId }),
+  });
+  return handleApiResponse<GoogleDriveConnectionStatus>(response);
+}
 
 /**
  * Clear Google Drive tokens to allow re-authentication

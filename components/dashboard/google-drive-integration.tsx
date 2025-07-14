@@ -28,42 +28,43 @@ import {
 
 export function GoogleDriveIntegration() {
   const { token } = useAuth();
-  const [connectionStatus, setConnectionStatus] =
-    useState<GoogleDriveService.GoogleDriveConnectionStatus | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const userId = token ? parseJwt(token).user_id : undefined;
 
-  // Check connection status on mount
+  // Check connection status on mount using new API
   useEffect(() => {
-    if (token && userId) {
-      checkConnection();
+    if (userId) {
+      fetch(`http://localhost:8080/api/v1/auth/google/drive/status?user_id=${userId}`)
+        .then((res) => res.json())
+        .then((data) => setIsConnected(data.connected))
+        .catch(() => setIsConnected(false));
     }
-  }, [token, userId]);
+  }, [userId]);
 
-  const checkConnection = async () => {
-    if (!token || !userId) return;
-
-    setRefreshing(true);
-    try {
-      const status = await GoogleDriveService.checkConnection(token, userId);
-      setConnectionStatus(status);
-    } catch (error: any) {
-      console.error("Failed to check Google Drive connection:", error);
-      toast.error("Failed to check Google Drive connection");
-    } finally {
-      setRefreshing(false);
+  // Remove checkConnection and connectionStatus logic
+  // Add a refreshStatus function to re-call the status API
+  const refreshStatus = () => {
+    if (userId) {
+      setRefreshing(true);
+      fetch(`http://localhost:8080/api/v1/auth/google/drive/status?user_id=${userId}`)
+        .then((res) => res.json())
+        .then((data) => setIsConnected(data.connected))
+        .catch(() => setIsConnected(false))
+        .finally(() => setRefreshing(false));
     }
   };
 
+  // Update connectToDrive and clearTokens to call refreshStatus after actions
   const connectToDrive = () => {
     setLoading(true);
     GoogleDriveService.authenticateWithGoogleDrive(
       () => {
         setLoading(false);
         toast.success("Google Drive connected successfully!");
-        checkConnection();
+        refreshStatus();
       },
       (error) => {
         setLoading(false);
@@ -74,11 +75,10 @@ export function GoogleDriveIntegration() {
 
   const clearTokens = async () => {
     if (!token || !userId) return;
-
     try {
       await GoogleDriveService.clearTokens(token, userId);
       toast.success("Tokens cleared successfully. You can now reconnect.");
-      checkConnection();
+      refreshStatus();
     } catch (error: any) {
       toast.error(`Failed to clear tokens: ${error.message}`);
     }
@@ -126,135 +126,69 @@ export function GoogleDriveIntegration() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {connectionStatus ? (
-          <>
-            {/* Connection Status */}
-            <Alert className={getStatusColor(connectionStatus.status)}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(connectionStatus.status)}
-                  <div>
-                    <AlertDescription className="font-medium">
-                      Status: {connectionStatus.status.replace(/_/g, " ")}
-                    </AlertDescription>
-                    {connectionStatus.token_expiry &&
-                      connectionStatus.minutes_until_expiry && (
-                        <AlertDescription className="text-sm mt-1">
-                          Token expires in{" "}
-                          {connectionStatus.minutes_until_expiry} minutes
-                        </AlertDescription>
-                      )}
-                  </div>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={getStatusColor(connectionStatus.status)}
-                >
-                  {connectionStatus.status}
-                </Badge>
-              </div>
-            </Alert>
-
-            {/* Connection Details */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">Access Token:</span>
-                <Badge
-                  variant={
-                    connectionStatus.access_token_valid
-                      ? "default"
-                      : "destructive"
-                  }
-                >
-                  {connectionStatus.access_token_valid ? "Valid" : "Invalid"}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">Auto Refresh:</span>
-                <Badge
-                  variant={
-                    connectionStatus.auto_refresh_available
-                      ? "default"
-                      : "secondary"
-                  }
-                >
-                  {connectionStatus.auto_refresh_available
-                    ? "Available"
-                    : "Unavailable"}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
-              {connectionStatus.status !== "CONNECTED" && (
-                <Button
-                  onClick={connectToDrive}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {loading ? "Connecting..." : "Connect Drive"}
-                </Button>
-              )}
-
-              <Button
-                onClick={checkConnection}
-                variant="outline"
-                disabled={refreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                />
-                Refresh Status
-              </Button>
-
-              {connectionStatus.refresh_token_available && (
-                <Button
-                  onClick={clearTokens}
-                  variant="destructive"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear Tokens
-                </Button>
-              )}
-            </div>
-
-            {/* Reconnection Alert */}
-            {connectionStatus.needs_reconnection && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription>
-                  <strong>Action Required:</strong> Your Google Drive connection
-                  needs to be refreshed. Please reconnect to continue uploading
-                  reels.
-                </AlertDescription>
-              </Alert>
-            )}
-          </>
-        ) : (
-          /* Initial Connection */
-          <div className="text-center py-6">
-            <HardDrive className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">
-              Connect your Google Drive account to automatically backup
-              Instagram reels
-            </p>
+        {/* New connection status UI */}
+        {isConnected === true && (
+          <Alert className="bg-green-50 border-green-200 text-green-600 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <span>✅ Connected</span>
+          </Alert>
+        )}
+        {isConnected === false && (
+          <Alert className="bg-red-50 border-red-200 text-red-600 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <span>❌ Not Connected</span>
+          </Alert>
+        )}
+        {/* Connection Details */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-gray-500" />
+            <span className="text-gray-600">Access Token:</span>
+            <Badge variant={isConnected === true ? "default" : "destructive"}>
+              {isConnected === true ? "Valid" : "Invalid"}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-gray-500" />
+            <span className="text-gray-600">Auto Refresh:</span>
+            <Badge variant={isConnected === true ? "default" : "secondary"}>
+              {isConnected === true ? "Available" : "Unavailable"}
+            </Badge>
+          </div>
+        </div>
+        {/* Actions */}
+        <div className="flex gap-2 pt-2">
+          {isConnected !== true && (
             <Button
               onClick={connectToDrive}
               disabled={loading}
-              className="flex items-center gap-2 mx-auto"
+              className="flex items-center gap-2"
             >
               <ExternalLink className="h-4 w-4" />
-              {loading ? "Connecting..." : "Connect Google Drive"}
+              {loading ? "Connecting..." : "Connect Drive"}
             </Button>
-          </div>
-        )}
+          )}
+          <Button
+            onClick={refreshStatus}
+            variant="outline"
+            disabled={refreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh Status
+          </Button>
+          {isConnected !== true && (
+            <Button
+              onClick={clearTokens}
+              variant="destructive"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Tokens
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

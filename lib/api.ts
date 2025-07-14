@@ -254,6 +254,29 @@ export async function triggerUserInfoTest(token: string) {
 }
 
 // =============================================================================
+// PROFILE APIs
+// =============================================================================
+
+// Fetch current user profile
+export async function getProfile(token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+    method: "GET",
+    headers: getAuthHeaders(token),
+  });
+  return handleApiResponse<any>(response);
+}
+
+// Update current user profile
+export async function updateProfile(token: string, data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleApiResponse<any>(response);
+}
+
+// =============================================================================
 // LEGACY/COMPATIBILITY APIs (keeping for backward compatibility)
 // =============================================================================
 

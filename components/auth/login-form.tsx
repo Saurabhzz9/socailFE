@@ -60,44 +60,43 @@ export function LoginForm({
   };
 
   return (
-    <div className="flex w-full h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 relative overflow-hidden">
-      {/* Glassmorphic Background Elements */}
+    <div className="flex w-full h-screen bg-background relative overflow-hidden">
+      {/* Dark themed background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-primary/3 rounded-full blur-3xl"></div>
       </div>
       {/* Left Side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 relative z-10">
-        <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl p-10 py-14 border border-white/30 shadow-2xl shadow-black/10">
+        <div className="w-full max-w-md bg-card/80 backdrop-blur-xl rounded-3xl p-10 py-14 border border-border shadow-2xl">
           <Link
             href="/"
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 transition-colors"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Link>
           {/* Header */}
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-3 mb-6">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xl shadow-black/25">
+              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xl">
                 <Image
-                  src="/favicon.ico" // Or use imported StaticImageData
+                  src="/favicon.ico"
                   alt="Quolo Logo"
                   width={48}
                   height={48}
                   className="object-cover w-full h-full"
                 />
               </div>
-              <span className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <span className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Quolo
               </span>
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               Welcome back!
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Sign in to your account to continue managing your social media
             </p>
           </div>
@@ -107,20 +106,20 @@ export function LoginForm({
             <div>
               <Label
                 htmlFor="email"
-                className="text-sm font-medium text-gray-700 mb-2 block"
+                className="text-sm font-medium text-foreground mb-2 block"
               >
                 Email
               </Label>
               <Input
                 id="email"
-                className="w-full px-4 py-3 rounded-xl bg-white/70 backdrop-blur-sm border border-white/30 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 shadow-inner"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 backdrop-blur-sm border border-border focus:border-primary focus:ring-primary/20 transition-all duration-300"
                 type="email"
                 placeholder="Enter your email"
                 {...register("email")}
                 required
               />
               {errors.email && (
-                <p className="text-sm text-red-500 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.email.message}
                 </p>
               )}
@@ -130,27 +129,27 @@ export function LoginForm({
               <div className="flex items-center justify-between mb-2">
                 <Label
                   htmlFor="password"
-                  className="text-sm font-medium text-gray-700"
+                  className="text-sm font-medium text-foreground"
                 >
                   Password
                 </Label>
                 <a
                   href="#"
-                  className="text-sm text-orange-600 hover:text-orange-700 transition-colors"
+                  className="text-sm text-primary hover:text-primary/80 transition-colors"
                 >
                   Forgot password?
                 </a>
               </div>
               <Input
                 id="password"
-                className="w-full px-4 py-3 rounded-xl bg-white/70 backdrop-blur-sm border border-white/30 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 shadow-inner"
+                className="w-full px-4 py-3 rounded-xl bg-background/70 backdrop-blur-sm border border-border focus:border-primary focus:ring-primary/20 transition-all duration-300"
                 type="password"
                 placeholder="Enter your password"
                 {...register("password")}
                 required
               />
               {errors.password && (
-                <p className="text-sm text-red-500 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {errors.password.message}
                 </p>
               )}
@@ -158,7 +157,7 @@ export function LoginForm({
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-800  text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
               disabled={loading}
             >
               {loading ? (
@@ -173,10 +172,10 @@ export function LoginForm({
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-4 text-gray-500">
+                <span className="bg-card px-4 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
@@ -185,7 +184,7 @@ export function LoginForm({
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-3 border-gray-300 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-center gap-3 border-border py-3 rounded-xl hover:bg-accent transition-colors"
               onClick={handleGoogleLogin}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -212,11 +211,11 @@ export function LoginForm({
 
           {/* Sign Up Link */}
           <div className="text-center mt-8">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Don't have an account?{" "}
               <Link
                 href="/auth/signup"
-                className="text-orange-600 hover:text-orange-700 font-semibold transition-colors"
+                className="text-primary hover:text-primary/80 font-semibold transition-colors"
               >
                 Sign up for free
               </Link>
@@ -226,17 +225,17 @@ export function LoginForm({
       </div>
 
       {/* Right Side - Benefits & Testimonial */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 text-white p-12 items-center">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-background via-card to-background text-foreground p-12 items-center border-l border-border">
         <div className="max-w-lg">
-          <Badge className="mb-6 bg-white/20 text-white border-white/30">
+          <Badge className="mb-6 bg-primary/20 text-primary border-primary/30">
             ⚡ Join 10,000+ creators
           </Badge>
 
-          <h2 className="text-4xl font-bold mb-6">
+          <h2 className="text-4xl font-bold mb-6 text-foreground">
             Manage all your social media in one place
           </h2>
 
-          <p className="text-xl mb-8 text-orange-100">
+          <p className="text-xl mb-8 text-muted-foreground">
             Save 3+ hours every week with automated posting, smart scheduling,
             and powerful analytics.
           </p>
@@ -244,38 +243,44 @@ export function LoginForm({
           {/* Features */}
           <div className="space-y-4 mb-12">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <Zap className="w-4 h-4" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Zap className="w-4 h-4 text-primary" />
               </div>
-              <span>One-click posting to all platforms</span>
+              <span className="text-foreground">
+                One-click posting to all platforms
+              </span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <Shield className="w-4 h-4" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-primary" />
               </div>
-              <span>Secure and privacy-focused</span>
+              <span className="text-foreground">
+                Secure and privacy-focused
+              </span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary" />
               </div>
-              <span>Smart analytics and insights</span>
+              <span className="text-foreground">
+                Smart analytics and insights
+              </span>
             </div>
           </div>
 
           {/* Testimonial */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <p className="text-lg mb-4">
+          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border">
+            <p className="text-lg mb-4 text-foreground">
               "Quolo saved me 3+ hours every week. The dashboard is beautiful
               and it just works!"
             </p>
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white font-bold mr-3">
+              <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold mr-3">
                 R
               </div>
               <div>
-                <div className="font-semibold">Raj K.</div>
-                <div className="text-orange-200 text-sm">Indie Maker</div>
+                <div className="font-semibold text-foreground">Raj K.</div>
+                <div className="text-muted-foreground text-sm">Indie Maker</div>
               </div>
             </div>
           </div>
