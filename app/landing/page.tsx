@@ -1055,12 +1055,12 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-purple-300">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/terms.html" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
                     Terms
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/privacy.html" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
                     Privacy
                   </a>
                 </li>

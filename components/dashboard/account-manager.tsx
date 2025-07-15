@@ -131,11 +131,17 @@ export function AccountManager() {
     const account = accounts.find((acc) => acc.id === accountId);
     if (!account) return;
 
-    try {
-      // Simulate connection process
-      toast.success(`Connecting to ${account.displayName}...`);
+    if (account.platform === "facebook") {
+      // Redirect to backend Facebook OAuth connect endpoint
+      window.location.href = process.env.NEXT_PUBLIC_API_URL
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/facebook/connect?user_id=${accountId}`
+        : `http://localhost:8080/api/v1/facebook/connect?user_id=${accountId}`;
+      return;
+    }
 
-      // In real implementation, this would redirect to OAuth flow
+    try {
+      // Simulate connection process for other platforms
+      toast.success(`Connecting to ${account.displayName}...`);
       setTimeout(() => {
         setAccounts((prev) =>
           prev.map((acc) =>

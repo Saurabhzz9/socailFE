@@ -357,131 +357,64 @@ export default function DriveDownloadsPage() {
           <CardTitle>Available Files</CardTitle>
           <CardDescription>Browse and download files from your drives</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-[#18122B] border border-purple-900/40 rounded-2xl shadow-2xl text-white">
           <div className="flex items-center mb-4 gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white/50" />
               <Input
                 placeholder="Search files..."
-                className="pl-8"
+                className="pl-8 bg-[#232946] border border-white/10 text-white placeholder:text-gray-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="relative flex gap-2">
               <Button variant="outline" size="icon" onClick={() => setShowSort((v) => !v)}>
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 text-white" />
                 <span className="sr-only">Sort</span>
               </Button>
               {showSort && (
                 <div
                   ref={sortPanelRef}
-                  className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-3 space-y-1"
+                  className="absolute right-0 mt-2 w-56 bg-[#232946] border border-white/10 rounded-xl shadow-2xl z-50 p-3 space-y-1 text-white"
                 >
                   <div className="font-semibold mb-2 text-base">Sort By</div>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "uploaded_desc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("uploaded_desc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Uploaded (Newest)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "uploaded_asc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("uploaded_asc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Uploaded (Oldest)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "file_asc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("file_asc")
-                      setShowSort(false)
-                    }}
-                  >
-                    File Name (A-Z)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "file_desc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("file_desc")
-                      setShowSort(false)
-                    }}
-                  >
-                    File Name (Z-A)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "likes_desc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("likes_desc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Likes (High-Low)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "likes_asc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("likes_asc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Likes (Low-High)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "views_desc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("views_desc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Views (High-Low)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "views_asc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("views_asc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Views (Low-High)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "play_desc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("play_desc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Play Count (High-Low)
-                  </button>
-                  <button
-                    className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-100 ${sortOption === "play_asc" ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSortOption("play_asc")
-                      setShowSort(false)
-                    }}
-                  >
-                    Play Count (Low-High)
-                  </button>
+                  {[
+                    ["uploaded_desc", "Uploaded (Newest)"],
+                    ["uploaded_asc", "Uploaded (Oldest)"],
+                    ["file_asc", "File Name (A-Z)"],
+                    ["file_desc", "File Name (Z-A)"],
+                    ["likes_desc", "Likes (High-Low)"],
+                    ["likes_asc", "Likes (Low-High)"],
+                    ["views_desc", "Views (High-Low)"],
+                    ["views_asc", "Views (Low-High)"],
+                    ["play_desc", "Play Count (High-Low)"],
+                    ["play_asc", "Play Count (Low-High)"]
+                  ].map(([val, label]) => (
+                    <button
+                      key={val}
+                      className={`block w-full text-left px-2 py-1 rounded hover:bg-white/10 ${sortOption === val ? "bg-white/10" : ""}`}
+                      onClick={() => {
+                        setSortOption(val);
+                        setShowSort(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               )}
               <Button variant="outline" size="icon" onClick={() => setShowFilters((v) => !v)}>
-                <Filter className="h-4 w-4" />
+                <Filter className="h-4 w-4 text-white" />
               </Button>
               {showFilters && (
                 <div
                   ref={filterPanelRef}
-                  className="absolute right-0 mt-2 w-80 bg-gray-50 border border-gray-200 rounded-xl shadow-2xl z-50 p-5 space-y-4"
+                  className="absolute right-0 mt-2 w-80 bg-[#232946] border border-white/10 rounded-xl shadow-2xl z-50 p-5 space-y-4 text-white"
                   style={{ minWidth: 300 }}
                 >
                   <button
-                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+                    className="absolute top-2 right-2 text-gray-400 hover:text-white"
                     onClick={() => setShowFilters(false)}
                     aria-label="Close filter panel"
                     type="button"
@@ -489,6 +422,8 @@ export default function DriveDownloadsPage() {
                     <X className="w-5 h-5" />
                   </button>
                   <div className="font-semibold mb-2 text-lg">Filters</div>
+
+                  {/* Likes */}
                   <div className="flex gap-2 items-center">
                     <span className="w-24 text-xs">Likes</span>
                     <Input
@@ -497,7 +432,7 @@ export default function DriveDownloadsPage() {
                       value={likeMin}
                       onChange={(e) => setLikeMin(e.target.value)}
                       placeholder="Min"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                     <Input
                       type="number"
@@ -505,9 +440,11 @@ export default function DriveDownloadsPage() {
                       value={likeMax}
                       onChange={(e) => setLikeMax(e.target.value)}
                       placeholder="Max"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                   </div>
+
+                  {/* Views */}
                   <div className="flex gap-2 items-center">
                     <span className="w-24 text-xs">Views</span>
                     <Input
@@ -516,7 +453,7 @@ export default function DriveDownloadsPage() {
                       value={viewMin}
                       onChange={(e) => setViewMin(e.target.value)}
                       placeholder="Min"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                     <Input
                       type="number"
@@ -524,9 +461,11 @@ export default function DriveDownloadsPage() {
                       value={viewMax}
                       onChange={(e) => setViewMax(e.target.value)}
                       placeholder="Max"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                   </div>
+
+                  {/* Play Count */}
                   <div className="flex gap-2 items-center">
                     <span className="w-24 text-xs">Play Count</span>
                     <Input
@@ -535,7 +474,7 @@ export default function DriveDownloadsPage() {
                       value={playMin}
                       onChange={(e) => setPlayMin(e.target.value)}
                       placeholder="Min"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                     <Input
                       type="number"
@@ -543,64 +482,101 @@ export default function DriveDownloadsPage() {
                       value={playMax}
                       onChange={(e) => setPlayMax(e.target.value)}
                       placeholder="Max"
-                      className="w-16"
+                      className="w-16 bg-[#18122B] border border-white/10 text-white"
                     />
                   </div>
+
+                  {/* Exists Filter */}
                   <div className="flex gap-2 items-center">
                     <span className="w-24 text-xs">Exists in Drive</span>
                     <select
                       value={existsFilter}
                       onChange={(e) => setExistsFilter(e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
+                      className="border border-white/10 bg-[#18122B] text-white text-xs rounded px-2 py-1"
                     >
                       <option value="all">All</option>
                       <option value="true">Exists</option>
                       <option value="false">Missing</option>
                     </select>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={clearFilters}>
-                    Clear Filters
-                  </Button>
+
+                  <Button variant="outline" size="sm" className="w-full mt-2">Clear Filters</Button>
                 </div>
               )}
             </div>
           </div>
-          {loading && <div className="text-center text-muted-foreground py-10">Loading files...</div>}
+
+          {/* File Grid or Messages */}
+          {loading && <div className="text-center text-gray-400 py-10">Loading files...</div>}
           {error && <div className="text-center text-red-500 py-10">{error}</div>}
           {!loading && !error && sortedFiles.length === 0 && (
-            <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+            <div className="flex items-center justify-center h-[200px] text-gray-400">
               No files found in your drive.
             </div>
           )}
+
+          {/* Files */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedFiles.map((file) => (
-              <Card key={file.id} className="relative">
+              <Card key={file.id} className="relative bg-[#232946] border border-white/10 text-white shadow-2xl rounded-2xl">
                 <CardContent className="pt-4">
-                  {/* File type and source badges */}
+                  {/* File badges */}
                   <div className="flex gap-2 mb-2 items-center">
-                    {file.type === "video" && <Badge variant="outline" className="flex items-center gap-1"><Video className="w-4 h-4" /> Video</Badge>}
-                    {file.type === "image" && <Badge variant="outline" className="flex items-center gap-1"><ImageIcon className="w-4 h-4" /> Image</Badge>}
-                    {file.type === "reel" && <Badge variant="outline" className="flex items-center gap-1"><Video className="w-4 h-4" /> Reel</Badge>}
-                    {file.source === "db" && <Badge variant="secondary" className="flex items-center gap-1"><Database className="w-4 h-4" /> DB</Badge>}
-                    {file.source === "drive_api" && <Badge variant="secondary" className="flex items-center gap-1"><Cloud className="w-4 h-4" /> Drive</Badge>}
+                    {file.type === "video" && (
+                      <Badge variant="outline" className="flex items-center gap-1 text-white border-white/30">
+                        <Video className="w-4 h-4" /> Video
+                      </Badge>
+                    )}
+                    {file.type === "image" && (
+                      <Badge variant="outline" className="flex items-center gap-1 text-white border-white/30">
+                        <ImageIcon className="w-4 h-4" /> Image
+                      </Badge>
+                    )}
+                    {file.type === "reel" && (
+                      <Badge variant="outline" className="flex items-center gap-1 text-white border-white/30">
+                        <Video className="w-4 h-4" /> Reel
+                      </Badge>
+                    )}
+                    {file.source === "db" && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Database className="w-4 h-4" /> DB
+                      </Badge>
+                    )}
+                    {file.source === "drive_api" && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Cloud className="w-4 h-4" /> Drive
+                      </Badge>
+                    )}
                   </div>
-                  {/* Thumbnail or icon */}
+
+                  {/* Thumbnail or placeholder */}
                   {file.thumbnail ? (
                     <img src={file.thumbnail} alt={file.file_name} className="mb-3 rounded-lg w-full h-40 object-cover" />
                   ) : file.type === "image" && file.web_view_link ? (
-                    <img src={file.web_view_link.replace("/view", "=s256-c") || "/placeholder.jpg"} alt={file.file_name} className="mb-3 rounded-lg w-full h-40 object-cover" />
+                    <img
+                      src={file.web_view_link.replace("/view", "=s256-c") || "/placeholder.jpg"}
+                      alt={file.file_name}
+                      className="mb-3 rounded-lg w-full h-40 object-cover"
+                    />
                   ) : file.type === "video" ? (
-                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-100 rounded-lg"><Video className="w-12 h-12 text-gray-400" /></div>
+                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-900 rounded-lg">
+                      <Video className="w-12 h-12 text-white/50" />
+                    </div>
                   ) : (
-                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-100 rounded-lg"><ImageIcon className="w-12 h-12 text-gray-400" /></div>
+                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-900 rounded-lg">
+                      <ImageIcon className="w-12 h-12 text-white/50" />
+                    </div>
                   )}
+
+                  {/* File Info */}
                   <div className="font-semibold text-lg mb-1 truncate">{file.file_name}</div>
-                  <div className="text-xs text-muted-foreground mb-2">
+                  <div className="text-xs text-white/60 mb-2">
                     {file.uploaded_at || file.created_time ? (
                       <>Uploaded: {file.uploaded_at || file.created_time}</>
                     ) : null}
                   </div>
-                  {/* Download/View button */}
+
+                  {/* Download/View */}
                   {file.source === "drive_api" && file.web_view_link ? (
                     <a href={file.web_view_link} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" className="w-full mt-2">View in Drive</Button>
@@ -615,6 +591,7 @@ export default function DriveDownloadsPage() {
             ))}
           </div>
         </CardContent>
+
       </Card>
     </div>
   )
