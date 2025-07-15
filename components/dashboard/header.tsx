@@ -1,5 +1,5 @@
 "use client";
-import { Bell, Settings, User, ChevronDown } from "lucide-react";
+import { Bell, Settings, User, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { parseJwt } from "@/lib/utils";
@@ -12,8 +12,49 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-export function Header() {
+// Accept optional currentTab for context-aware breadcrumbs
+function ModernBreadcrumb({ segments }: { segments: string[] }) {
+  return (
+    <nav className="flex items-center gap-2 bg-muted/40 px-4 py-2 rounded-lg shadow-sm">
+      {segments.map((seg, idx) => (
+        <span key={seg + idx} className={`capitalize text-base font-medium ${idx === segments.length - 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+          {seg}
+          {idx < segments.length - 1 && (
+            <ChevronRight className="inline-block mx-2 w-4 h-4 text-muted-foreground" />
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+function toTitleCase(str: string) {
+  return str.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function Breadcrumb({ currentTab }: { currentTab?: string }) {
+  const pathname = usePathname();
+  const segments = pathname.replace(/^\//, '').split('/').filter(Boolean);
+  let displaySegments = [];
+  if (segments[0] === 'dashboard') {
+    displaySegments = ['Dashboard', ...segments.slice(1)];
+  } else {
+    displaySegments = segments;
+  }
+  // If currentTab is provided (e.g. in settings), use it as the last segment
+  if (currentTab) {
+    if (displaySegments[displaySegments.length - 1]?.toLowerCase() !== currentTab.toLowerCase()) {
+      displaySegments.push(currentTab);
+    }
+  }
+  // Convert to title case for display
+  const display = displaySegments.map(toTitleCase);
+  return <ModernBreadcrumb segments={display} />;
+}
+
+export function Header({ currentTab }: { currentTab?: string }) {
   const { token, logout } = useAuth();
   const userInfo = token ? parseJwt(token) : null;
 
@@ -21,11 +62,7 @@ export function Header() {
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Welcome back
-            {userInfo?.username ? `, ${userInfo.username}` : " to Quolo"}
-          </p>
+          <Breadcrumb currentTab={currentTab} />
         </div>
 
         <div className="flex items-center space-x-4">

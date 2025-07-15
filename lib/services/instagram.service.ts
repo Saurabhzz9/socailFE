@@ -128,3 +128,19 @@ export async function checkInstagramConnection(token: string, userId: number) {
     username?: string;
   }>(response);
 }
+
+/**
+ * Fetch Instagram reels using the scraper endpoint (no auth required)
+ * @param username - Instagram username
+ * @param limit - Number of reels to fetch
+ */
+export async function fetchReelsScraper(username: string, limit: number) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/scraper/instagram/reels`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, limit }),
+  });
+  return handleApiResponse<InstagramReelsResponse>(response);
+}

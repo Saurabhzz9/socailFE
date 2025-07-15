@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GoogleDriveIntegration } from "@/components/dashboard/google-drive-integration";
+import { fetchReelsScraper } from "@/lib/services/instagram.service";
+import { uploadInstagramReels } from "@/lib/api";
 
 // Define a type for a Reel
 type Reel = {
@@ -189,7 +191,7 @@ export default function InstagramDownloader() {
   >({});
 
   const userId = token ? parseJwt(token).user_id : undefined;
-  const { isConnected: isDriveConnected } = useGoogleDriveConnection();
+  const { isConnected: isDriveConnected, checkConnection } = useGoogleDriveConnection();
 
   // Save username to localStorage when it changes
   useEffect(() => {
@@ -304,7 +306,7 @@ export default function InstagramDownloader() {
     };
   }, [reels, token]);
 
-  // Fetch reels using static data for now
+  // Fetch reels using the new scraper API
   const fetchReels = async () => {
     if (!username) {
       setError("Please enter a username");
@@ -317,53 +319,22 @@ export default function InstagramDownloader() {
     setSelected([]);
 
     try {
-      // Using static data for now - API commented out
-      const staticReelsData = [
-        {
-          id: 1,
-          caption: "Amazing sunset vibes 🌅 #sunset #nature #photography",
-          likes: 1234,
-          views: 5678,
-          playCount: 2341,
-          commentCount: 45,
-          reel_url: "https://example.com/reel1.mp4",
-          instagram_username: username,
-          timestamp: Date.now() / 1000,
-          thumbnail:
-            "https://via.placeholder.com/300x400/FF6B6B/FFFFFF?text=Reel+1",
-        },
-        {
-          id: 2,
-          caption: "Coffee time ☕ Starting the day right! #coffee #morning",
-          likes: 890,
-          views: 3456,
-          playCount: 1567,
-          commentCount: 23,
-          reel_url: "https://example.com/reel2.mp4",
-          instagram_username: username,
-          timestamp: Date.now() / 1000 - 86400,
-          thumbnail:
-            "https://via.placeholder.com/300x400/4ECDC4/FFFFFF?text=Reel+2",
-        },
-        {
-          id: 3,
-          caption: "Weekend workout session 💪 #fitness #motivation #gym",
-          likes: 2156,
-          views: 8901,
-          playCount: 3789,
-          commentCount: 67,
-          reel_url: "https://example.com/reel3.mp4",
-          instagram_username: username,
-          timestamp: Date.now() / 1000 - 172800,
-          thumbnail:
-            "https://via.placeholder.com/300x400/45B7D1/FFFFFF?text=Reel+3",
-        },
-      ];
-
-      setReels(staticReelsData);
-      toast.success(
-        `Fetched ${staticReelsData.length} reels successfully! (Static data)`,
-      );
+      const response = await fetchReelsScraper(username, limit);
+      // Map API response to local Reel type (add id field if needed)
+      const reelsWithId = response.reels.map((reel, idx) => ({
+        id: idx + 1, // Assign a local id for selection
+        caption: reel.caption,
+        likes: reel.likes,
+        views: reel.views,
+        playCount: reel.play_count,
+        commentCount: reel.comment_count,
+        reel_url: reel.reel_url,
+        instagram_username: reel.instagram_username,
+        timestamp: reel.timestamp,
+        thumbnail: reel.thumbnail,
+      }));
+      setReels(reelsWithId);
+      toast.success(`Fetched ${reelsWithId.length} reels successfully!`);
     } catch (e: any) {
       setError(e.message || "Unknown error");
       toast.error(`Failed to fetch reels: ${e.message}`);
@@ -393,8 +364,10 @@ export default function InstagramDownloader() {
       return;
     }
 
-    // Check Google Drive connection first
-    if (!isDriveConnected) {
+    // Always check Google Drive connection and use the latest result
+    const status = await checkConnection();
+    console.log(status)
+    if (!status || status.has_access_token !== true) {
       toast.error("Google Drive not connected. Please connect first.");
       return;
     }
@@ -404,13 +377,26 @@ export default function InstagramDownloader() {
     setUploadSuccess(false);
 
     try {
-      // Using static response for now - API commented out
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate upload time
-
+      // Use the real API call
+      await uploadInstagramReels(token, {
+        user_id: userId,
+        reels: selectedReels.map((r) => ({
+          instagram_username: r.instagram_username || username,
+          reel_url: r.reel_url!,
+          caption: r.caption,
+          likes: r.likes,
+          views: r.views,
+          timestamp: r.timestamp!,
+          play_count: r.playCount,
+          comment_count: r.commentCount,
+          thumbnail: r.thumbnail || "",
+        })),
+        custom_name: username,
+      });
       setUploadSuccess(true);
-      toast.success(
-        `Successfully uploaded ${selectedReels.length} reels to Google Drive! (Static response)`,
-      );
+      toast.success(`Successfully uploaded ${selectedReels.length} reels to Google Drive!`);
+      // Trigger Drive Downloads page to refresh
+      window.dispatchEvent(new Event("drive:refresh"));
     } catch (e: any) {
       setUploadError(e.message || "Unknown error");
       toast.error(`Upload failed: ${e.message}`);

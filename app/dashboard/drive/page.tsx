@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Search, Filter, Download, CheckCircle, XCircle, X, ChevronDown, RefreshCw } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
+import { Badge } from "@/components/ui/badge";
+import { Video, Image as ImageIcon, Database, Cloud } from "lucide-react";
 
 // Helper to parse JWT and extract user_id
 function parseJwtLocal(token: string): { user_id?: number } {
@@ -24,18 +26,25 @@ function parseJwtLocal(token: string): { user_id?: number } {
 }
 
 type DriveFile = {
-  id: number
-  file_name: string
-  drive_file_id: string
-  shareable_link: string
-  uploaded_at: string
-  exists_in_drive: boolean
-  likes: number
-  views: number
-  play_count: number
-  comment_count: string
-  thumbnail: string
-}
+  id: string | number;
+  file_name: string;
+  drive_file_id?: string;
+  shareable_link?: string;
+  uploaded_at?: string;
+  exists_in_drive?: boolean;
+  likes?: number;
+  views?: number;
+  play_count?: number;
+  comment_count?: string | number;
+  thumbnail?: string;
+  caption?: string;
+  instagram_username?: string;
+  mime_type?: string;
+  web_view_link?: string;
+  created_time?: string;
+  type?: string; // 'video', 'image', 'reel', etc.
+  source?: string; // 'db' or 'drive_api'
+};
 
 // Add these helper functions at the top of the file, after the imports
 const STORAGE_EXPIRY = 12 * 60 * 60 * 1000 // 12 hours in milliseconds
@@ -76,7 +85,8 @@ function getFromStorage<T>(key: string): T | null {
 export default function DriveDownloadsPage() {
   const { token } = useAuth()
   const [files, setFiles] = useState<DriveFile[]>(() => {
-    return getFromStorage<DriveFile[]>("driveDownloadsFiles") || []
+    const stored = getFromStorage<DriveFile[] | undefined>("driveDownloadsFiles")
+    return Array.isArray(stored) ? stored : []
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -144,9 +154,11 @@ export default function DriveDownloadsPage() {
   }, [])
 
   useEffect(() => {
+    // Defensive: ensure files is always an array
+    const safeFiles: DriveFile[] = Array.isArray(files) ? files : [];
     // Set all thumbnails to loading state immediately
     const initialStates: Record<number, { url: string | null; error: boolean; isLoading: boolean }> = {}
-    files.forEach((file) => {
+    safeFiles.forEach((file: DriveFile) => {
       if (file.thumbnail) {
         initialStates[file.id] = { url: null, error: false, isLoading: true }
       }
@@ -156,7 +168,7 @@ export default function DriveDownloadsPage() {
     // Load all thumbnails in parallel
     const loadThumbnails = async () => {
       await Promise.all(
-        files.map(async (file) => {
+        safeFiles.map(async (file: DriveFile) => {
           if (!file.thumbnail || !token) return
 
           try {
@@ -222,7 +234,8 @@ export default function DriveDownloadsPage() {
       }
 
       const data = await resp.json()
-      const newFiles = data.files || data || []
+      // Defensive: ensure files is always an array
+      const newFiles = Array.isArray(data.files) ? data.files : []
       setFiles(newFiles)
       saveToStorage("driveDownloadsFiles", newFiles)
     } catch (e: any) {
@@ -242,6 +255,19 @@ export default function DriveDownloadsPage() {
     }
   }, [token, initialLoadDone])
 
+  // Auto-refresh files on mount
+  useEffect(() => {
+    if (token) {
+      fetchFiles();
+    }
+    // Optionally, listen for a custom event to refresh after upload
+    const handleDriveRefresh = () => {
+      if (token) fetchFiles();
+    };
+    window.addEventListener("drive:refresh", handleDriveRefresh);
+    return () => window.removeEventListener("drive:refresh", handleDriveRefresh);
+  }, [token]);
+
   // Check for expired data on mount
   useEffect(() => {
     const checkExpiredData = () => {
@@ -260,7 +286,7 @@ export default function DriveDownloadsPage() {
   }, [])
 
   // Filtering logic
-  const filteredFiles = files.filter((file) => {
+  const filteredFiles = Array.isArray(files) ? files.filter((file) => {
     // Search filter
     if (searchTerm && !file.file_name.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false
@@ -274,7 +300,7 @@ export default function DriveDownloadsPage() {
     if (existsFilter === "true" && !file.exists_in_drive) return false
     if (existsFilter === "false" && file.exists_in_drive) return false
     return true
-  })
+  }) : []
 
   // Sorting logic
   const sortedFiles = [...filteredFiles].sort((a, b) => {
@@ -284,21 +310,21 @@ export default function DriveDownloadsPage() {
       case "file_desc":
         return b.file_name.localeCompare(a.file_name)
       case "uploaded_asc":
-        return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime()
+        return new Date(a.uploaded_at || a.created_time || "").getTime() - new Date(b.uploaded_at || b.created_time || "").getTime()
       case "uploaded_desc":
-        return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+        return new Date(b.uploaded_at || b.created_time || "").getTime() - new Date(a.uploaded_at || a.created_time || "").getTime()
       case "likes_asc":
-        return a.likes - b.likes
+        return (a.likes || 0) - (b.likes || 0)
       case "likes_desc":
-        return b.likes - a.likes
+        return (b.likes || 0) - (a.likes || 0)
       case "views_asc":
-        return a.views - b.views
+        return (a.views || 0) - (b.views || 0)
       case "views_desc":
-        return b.views - a.views
+        return (b.views || 0) - (a.views || 0)
       case "play_asc":
-        return a.play_count - b.play_count
+        return (a.play_count || 0) - (b.play_count || 0)
       case "play_desc":
-        return b.play_count - a.play_count
+        return (b.play_count || 0) - (a.play_count || 0)
       default:
         return 0
     }
@@ -548,63 +574,42 @@ export default function DriveDownloadsPage() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedFiles.map((file) => (
-              <Card key={file.id} className="relative border">
-                <CardContent className="pt-4 pb-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    {file.exists_in_drive ? (
-                      <span className="flex items-center gap-1 text-green-600 text-xs font-semibold">
-                        <CheckCircle className="w-4 h-4" /> Exists in Drive
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-red-500 text-xs font-semibold">
-                        <XCircle className="w-4 h-4" /> Missing from Drive
-                      </span>
-                    )}
+              <Card key={file.id} className="relative">
+                <CardContent className="pt-4">
+                  {/* File type and source badges */}
+                  <div className="flex gap-2 mb-2 items-center">
+                    {file.type === "video" && <Badge variant="outline" className="flex items-center gap-1"><Video className="w-4 h-4" /> Video</Badge>}
+                    {file.type === "image" && <Badge variant="outline" className="flex items-center gap-1"><ImageIcon className="w-4 h-4" /> Image</Badge>}
+                    {file.type === "reel" && <Badge variant="outline" className="flex items-center gap-1"><Video className="w-4 h-4" /> Reel</Badge>}
+                    {file.source === "db" && <Badge variant="secondary" className="flex items-center gap-1"><Database className="w-4 h-4" /> DB</Badge>}
+                    {file.source === "drive_api" && <Badge variant="secondary" className="flex items-center gap-1"><Cloud className="w-4 h-4" /> Drive</Badge>}
                   </div>
+                  {/* Thumbnail or icon */}
                   {file.thumbnail ? (
-                    <div className="relative w-full aspect-video mb-2 rounded-lg overflow-hidden">
-                      {thumbnailStates[file.id]?.isLoading ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 animate-pulse">
-                          Loading...
-                        </div>
-                      ) : thumbnailStates[file.id]?.error ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-red-400">
-                          Failed to load
-                        </div>
-                      ) : thumbnailStates[file.id]?.url !== null ? (
-                        <img
-                          src={thumbnailStates[file.id]?.url || undefined}
-                          alt={file.file_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                          <span className="text-gray-400 text-sm">No thumbnail</span>
-                        </div>
-                      )}
-                    </div>
+                    <img src={file.thumbnail} alt={file.file_name} className="mb-3 rounded-lg w-full h-40 object-cover" />
+                  ) : file.type === "image" && file.web_view_link ? (
+                    <img src={file.web_view_link.replace("/view", "=s256-c") || "/placeholder.jpg"} alt={file.file_name} className="mb-3 rounded-lg w-full h-40 object-cover" />
+                  ) : file.type === "video" ? (
+                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-100 rounded-lg"><Video className="w-12 h-12 text-gray-400" /></div>
                   ) : (
-                    <div className="w-full aspect-video mb-2 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <span className="text-gray-400 text-sm">No thumbnail</span>
-                    </div>
+                    <div className="mb-3 flex items-center justify-center h-40 bg-gray-100 rounded-lg"><ImageIcon className="w-12 h-12 text-gray-400" /></div>
                   )}
-                  <div className="font-semibold text-base mb-1 break-words">{file.file_name}</div>
+                  <div className="font-semibold text-lg mb-1 truncate">{file.file_name}</div>
                   <div className="text-xs text-muted-foreground mb-2">
-                    Uploaded: {new Date(file.uploaded_at).toLocaleString()}
+                    {file.uploaded_at || file.created_time ? (
+                      <>Uploaded: {file.uploaded_at || file.created_time}</>
+                    ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-3 text-xs mb-2">
-                    <span>❤️ {file.likes}</span>
-                    <span>👁️ {file.views}</span>
-                    <span>▶️ {file.play_count}</span>
-                    <span>💬 {file.comment_count}</span>
-                  </div>
-                  {file.exists_in_drive && file.shareable_link && (
-                    <a href={file.shareable_link} target="_blank" rel="noopener noreferrer">
-                      <Button className="w-full mt-2" variant="secondary">
-                        <Download className="w-4 h-4 mr-2" /> Download
-                      </Button>
+                  {/* Download/View button */}
+                  {file.source === "drive_api" && file.web_view_link ? (
+                    <a href={file.web_view_link} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="w-full mt-2">View in Drive</Button>
                     </a>
-                  )}
+                  ) : file.shareable_link ? (
+                    <a href={file.shareable_link} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="w-full mt-2">View/Download</Button>
+                    </a>
+                  ) : null}
                 </CardContent>
               </Card>
             ))}

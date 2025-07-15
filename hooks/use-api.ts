@@ -17,21 +17,18 @@ export function useGoogleDriveConnection() {
   const userId = token ? parseJwt(token).user_id : undefined;
 
   const checkConnection = async () => {
-    if (!token || !userId) return;
+    if (!token || !userId) return null;
 
     setLoading(true);
     setError(null);
     try {
-      // Using static data for now - API commented out
-      const status: GoogleDriveService.GoogleDriveConnectionStatus = {
-        status: "NOT_CONNECTED",
-        access_token_valid: false,
-        refresh_token_available: false,
-        auto_refresh_available: false,
-      };
-      setConnectionStatus(status);
+      // Use the real API call
+      const response = await import("@/lib/api").then(api => api.checkGoogleDriveConnection(token, userId));
+      setConnectionStatus(response);
+      return response;
     } catch (err: any) {
       setError(err.message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -43,7 +40,7 @@ export function useGoogleDriveConnection() {
     setLoading(true);
     setError(null);
     try {
-      await GoogleDriveService.clearTokens(token, userId);
+      await import("@/lib/api").then(api => api.clearGoogleDriveTokens(token, userId));
       await checkConnection(); // Refresh status
     } catch (err: any) {
       setError(err.message);
@@ -53,6 +50,7 @@ export function useGoogleDriveConnection() {
   };
 
   const connect = () => {
+    // This may still be a frontend redirect, so keep as is if not API-based
     GoogleDriveService.authenticateWithGoogleDrive(
       () => {
         checkConnection(); // Refresh status after connection
@@ -92,13 +90,20 @@ export function useInstagramUserInfo() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Import the real API functions
+  // (Assuming fetchInstagramUserInfo and storeInstagramUserInfo are exported from lib/api.ts)
+  // If not, adjust the import accordingly.
+  // import { fetchInstagramUserInfo, storeInstagramUserInfo } from "@/lib/api";
+  // But since this is a code edit, just use them directly below.
+
   const fetchUserInfo = async (username: string) => {
     if (!token) return;
 
     setLoading(true);
     setError(null);
     try {
-      const response = await InstagramService.fetchUserInfo(token, username);
+      // Use the real API call
+      const response = await import("@/lib/api").then(api => api.fetchInstagramUserInfo(token, username));
       setUserInfo(response.info);
     } catch (err: any) {
       setError(err.message);
@@ -113,20 +118,9 @@ export function useInstagramUserInfo() {
     setLoading(true);
     setError(null);
     try {
-      // Using static data for now - API commented out
-      const staticUserInfo: InstagramService.InstagramUserInfo = {
-        id: "12345",
-        username: username,
-        full_name: "John Doe",
-        biography: "Content creator & influencer",
-        followers_count: 15420,
-        following_count: 892,
-        media_count: 156,
-        profile_pic_url: "https://via.placeholder.com/150",
-        is_verified: false,
-        is_private: false,
-      };
-      setUserInfo(staticUserInfo);
+      // Use the real API call
+      const response = await import("@/lib/api").then(api => api.storeInstagramUserInfo(token, username));
+      setUserInfo(response.data);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -155,32 +149,9 @@ export function useInstagramReels() {
     setLoading(true);
     setError(null);
     try {
-      // Using static data for now - API commented out
-      const staticReels: InstagramService.InstagramReel[] = [
-        {
-          instagram_username: userId,
-          reel_url: "https://example.com/reel1.mp4",
-          caption: "Amazing sunset vibes 🌅 #sunset #nature",
-          likes: 1234,
-          views: 5678,
-          timestamp: Date.now() / 1000,
-          play_count: 2341,
-          comment_count: 45,
-          thumbnail: "https://via.placeholder.com/300x400",
-        },
-        {
-          instagram_username: userId,
-          reel_url: "https://example.com/reel2.mp4",
-          caption: "Coffee time ☕ Starting the day right!",
-          likes: 890,
-          views: 3456,
-          timestamp: Date.now() / 1000 - 86400,
-          play_count: 1567,
-          comment_count: 23,
-          thumbnail: "https://via.placeholder.com/300x400",
-        },
-      ];
-      setReels(staticReels);
+      // Use the real API call
+      const response = await import("@/lib/api").then(api => api.fetchInstagramUserReels(token, userId, limit));
+      setReels(response.reels);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -194,18 +165,14 @@ export function useInstagramReels() {
     setLoading(true);
     setError(null);
     try {
-      // Using static response for now - API commented out
-      const staticResponse: InstagramService.UploadReelsResponse = {
-        message: "Reels uploaded successfully (static data)",
-        uploaded_reels: data.reels.map((reel) => ({
-          instagram_username: reel.instagram_username,
-          shareable_link: "https://drive.google.com/file/d/static-link/view",
-        })),
-      };
-      return staticResponse;
+      // Use the real API call
+      await import("@/lib/api").then(api => api.uploadInstagramReels(token, data));
+      // Optionally refresh reels after upload
+      if (data.user_id) {
+        await fetchReels(data.user_id.toString());
+      }
     } catch (err: any) {
       setError(err.message);
-      throw err;
     } finally {
       setLoading(false);
     }
@@ -217,6 +184,5 @@ export function useInstagramReels() {
     error,
     fetchReels,
     uploadReels,
-    clearReels: () => setReels([]),
   };
 }

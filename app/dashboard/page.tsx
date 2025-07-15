@@ -187,27 +187,28 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Link href="/dashboard/schedule">
-                <Button className="w-full h-24 bg-purple-500 hover:opacity-90 text-accent border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
-                  <Calendar className="w-8 h-8" />
+                <Button className="w-full h-24 bg-purple-500 hover:opacity-90 text-white border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
+                  <Calendar className="w-8 h-8 text-white" />
                   <span className="font-medium">Schedule Content</span>
                 </Button>
               </Link>
 
               <Link href="/dashboard/connections">
-                <Button className="w-full h-24 bg-pink-500 hover:opacity-90 text-accent border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
-                  <Users className="w-8 h-8" />
+                <Button className="w-full h-24 bg-pink-500 hover:opacity-90 text-white border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
+                  <Users className="w-8 h-8 text-white" />
                   <span className="font-medium">Manage Accounts</span>
                 </Button>
               </Link>
 
               <Link href="/dashboard/analytics">
-                <Button className="w-full h-24 bg-blue-500 hover:opacity-90 text-accent border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
-                  <BarChart3 className="w-8 h-8" />
+                <Button className="w-full h-24 bg-blue-500 hover:opacity-90 text-white border-0 flex flex-col space-y-3 transition-all duration-300 hover:scale-105">
+                  <BarChart3 className="w-8 h-8 text-white" />
                   <span className="font-medium">View Analytics</span>
                 </Button>
               </Link>
             </div>
           </CardContent>
+
         </Card>
 
         {/* Performance Metrics */}

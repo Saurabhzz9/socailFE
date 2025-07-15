@@ -383,6 +383,7 @@ export interface UploadReelsResponse {
 }
 
 export interface GoogleDriveConnectionStatus {
+  [x: string]: boolean;
   status:
     | "CONNECTED"
     | "INCOMPLETE_CONNECTION"
