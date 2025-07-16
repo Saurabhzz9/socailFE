@@ -379,7 +379,6 @@ export default function InstagramDownloader() {
     try {
       // Use the real API call
       await uploadInstagramReels(token, {
-        user_id: userId,
         reels: selectedReels.map((r) => ({
           instagram_username: r.instagram_username || username,
           reel_url: r.reel_url!,

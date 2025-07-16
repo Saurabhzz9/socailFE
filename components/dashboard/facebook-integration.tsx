@@ -25,12 +25,12 @@ export function FacebookIntegration() {
 
   // Check Facebook connection status
   useEffect(() => {
-    if (userId) {
+    if (token) {
       setRefreshing(true);
       fetch(`http://localhost:8080/api/v1/auth/facebook/check-connection`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({}),
       })
         .then((res) => res.json())
         .then((data) => {
@@ -40,7 +40,7 @@ export function FacebookIntegration() {
         .catch(() => setIsConnected(false))
         .finally(() => setRefreshing(false));
     }
-  }, [userId]);
+  }, [token]);
 
   const handleConnect = () => {
     if (!userId) return;

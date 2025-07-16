@@ -36,20 +36,24 @@ export function GoogleDriveIntegration() {
 
   // Check connection status on mount using new API
   useEffect(() => {
-    if (userId) {
-      fetch(`http://localhost:8080/api/v1/auth/google/drive/status?user_id=${userId}`)
+    if (token) {
+      fetch(`http://localhost:8080/api/v1/auth/google/drive/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then((res) => res.json())
         .then((data) => setIsConnected(data.connected))
         .catch(() => setIsConnected(false));
     }
-  }, [userId]);
+  }, [token]);
 
   // Remove checkConnection and connectionStatus logic
   // Add a refreshStatus function to re-call the status API
   const refreshStatus = () => {
-    if (userId) {
+    if (token) {
       setRefreshing(true);
-      fetch(`http://localhost:8080/api/v1/auth/google/drive/status?user_id=${userId}`)
+      fetch(`http://localhost:8080/api/v1/auth/google/drive/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then((res) => res.json())
         .then((data) => setIsConnected(data.connected))
         .catch(() => setIsConnected(false))

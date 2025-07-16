@@ -116,13 +116,12 @@ export async function fetchInstagramUserInfo(token: string, username: string) {
 // Fetch Instagram user reels
 export async function fetchInstagramUserReels(
   token: string,
-  userId: string,
   limit = 10,
 ) {
   const response = await fetch(`${API_BASE_URL}/api/v1/instagram/user-reels`, {
     method: "POST",
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ user_id: userId, limit }),
+    body: JSON.stringify({ limit }),
   });
   return handleApiResponse<InstagramReelsResponse>(response);
 }
@@ -174,9 +173,9 @@ export async function storeInstagramUserInfo(token: string, username: string) {
   );
 }
 
-// Get User Reels API
-export async function getUserReels(token: string, userId: number) {
-  const response = await fetch(`${API_BASE_URL}/api/user-reels/${userId}`, {
+// Get User Reels API (remove userId from URL)
+export async function getUserReels(token: string) {
+  const response = await fetch(`${API_BASE_URL}/api/user-reels`, {
     method: "GET",
     headers: getAuthHeaders(token),
   });
@@ -316,7 +315,6 @@ export interface UserReel {
 }
 
 export interface AutoBackupRequest {
-  user_id: number;
   username: string;
   limit?: number;
   custom_name?: string;
@@ -367,7 +365,6 @@ export interface InstagramReelsResponse {
 }
 
 export interface UploadReelsRequest {
-  user_id: number;
   reels: InstagramReel[];
   custom_name?: string;
 }

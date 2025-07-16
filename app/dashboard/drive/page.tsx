@@ -220,8 +220,7 @@ export default function DriveDownloadsPage() {
     setLoading(true)
     setError(null)
     try {
-      const { user_id } = parseJwtLocal(token)
-      const resp = await fetch(`http://localhost:8080/api/verify-drive-files/${user_id}`, {
+      const resp = await fetch(`http://localhost:8080/api/verify-drive-files`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
