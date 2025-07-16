@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { parseJwt } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", icon: Home, href: "/dashboard", current: false },
@@ -92,12 +93,36 @@ export function Sidebar() {
         const res = await fetch(`${API_BASE}/api/v1/social/status`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        let data = null;
         if (res.ok) {
-          const data = await res.json();
-          setStatus(data);
-        } else {
-          setStatus(null);
+          data = await res.json();
         }
+        // Google Drive: check connection using the same logic as AccountManager
+        let driveConnected = false;
+        let driveStatus = null;
+        const userId = token ? parseJwt(token).user_id : undefined;
+        if (userId) {
+          const driveRes = await fetch(`${API_BASE}/api/v1/instagram/check-drive-connection`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ user_id: userId }),
+          });
+          if (driveRes.ok) {
+            driveStatus = await driveRes.json();
+            driveConnected = driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
+          }
+        }
+        setStatus({
+          ...data,
+          google_drive: {
+            ...(data?.google_drive || {}),
+            connected: driveConnected,
+            status: driveStatus,
+          },
+        });
       } catch (e) {
         setStatus(null);
       } finally {
