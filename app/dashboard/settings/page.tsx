@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { GoogleDriveIntegration } from "@/components/dashboard/google-drive-integration";
+import { FacebookIntegration } from "@/components/dashboard/facebook-integration";
 
 export default function SettingsPage() {
   const { token } = useAuth();
@@ -1020,6 +1021,9 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Facebook Integration */}
+          <FacebookIntegration />
 
           {/* Backup Settings */}
           <Card>

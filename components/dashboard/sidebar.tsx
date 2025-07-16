@@ -18,10 +18,10 @@ import {
   Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", icon: Home, href: "/dashboard", current: false },
@@ -70,16 +70,42 @@ const adminTools = [
   { name: "Admin Panel", icon: SettingsIcon, href: "/dashboard/admin" },
 ];
 
-const connections = [
-  { name: "Instagram", icon: Instagram },
-  { name: "YouTube", icon: Youtube },
-  { name: "TikTok", icon: Zap },
+const platformConnections = [
+  { name: "Instagram", icon: Instagram, key: "instagram" },
+  { name: "Google Drive", icon: HardDrive, key: "google_drive" },
+  { name: "Facebook", icon: Users, key: "facebook" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, token } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStatus() {
+      if (!token) return;
+      setLoading(true);
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+        const res = await fetch(`${API_BASE}/api/v1/social/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStatus(data);
+        } else {
+          setStatus(null);
+        }
+      } catch (e) {
+        setStatus(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchStatus();
+  }, [token]);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -107,14 +133,8 @@ export function Sidebar() {
     </Link>
   );
 
-  const ConnectionItem = ({
-    connection,
-    index,
-  }: {
-    connection: any;
-    index: number;
-  }) => {
-    const isConnected = index < 2; // Instagram and YouTube connected
+  const ConnectionItem = ({ connection }: { connection: any }) => {
+    const isConnected = status?.[connection.key]?.connected;
     return (
       <div
         className={cn(
@@ -241,11 +261,15 @@ export function Sidebar() {
               </h3>
             )}
             <ul className="space-y-2">
-              {connections.map((connection, index) => (
-                <li key={connection.name}>
-                  <ConnectionItem connection={connection} index={index} />
-                </li>
-              ))}
+              {loading ? (
+                <li className="text-xs text-muted-foreground px-2 py-2">Loading status...</li>
+              ) : (
+                platformConnections.map((connection) => (
+                  <li key={connection.name}>
+                    <ConnectionItem connection={connection} />
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </nav>
