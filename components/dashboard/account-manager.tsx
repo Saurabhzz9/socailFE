@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { parseJwt } from "@/lib/utils";
 
 type SocialAccount = {
   id: string;
@@ -83,15 +84,41 @@ export function AccountManager() {
       setLoading(true);
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+        // Fetch social status for all platforms (Instagram, Facebook)
         const res = await fetch(`${API_BASE}/api/v1/social/status`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        let data = null;
         if (res.ok) {
-          const data = await res.json();
-          setStatus(data);
-        } else {
-          setStatus(null);
+          data = await res.json();
         }
+        // Fetch Google Drive connection status using the correct API
+        let driveConnected = false;
+        let driveStatus = null;
+        const userId = token ? parseJwt(token).user_id : undefined;
+        if (userId) {
+          const driveRes = await fetch(`${API_BASE}/api/v1/instagram/check-drive-connection`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ user_id: userId }),
+          });
+          if (driveRes.ok) {
+            driveStatus = await driveRes.json();
+            driveConnected = driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
+          }
+        }
+        // Merge Google Drive connection status into status
+        setStatus({
+          ...data,
+          google_drive: {
+            ...(data?.google_drive || {}),
+            connected: driveConnected,
+            status: driveStatus,
+          },
+        });
       } catch (e) {
         setStatus(null);
       } finally {

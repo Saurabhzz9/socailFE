@@ -28,92 +28,47 @@ import {
 
 export function GoogleDriveIntegration() {
   const { token } = useAuth();
-  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [driveStatus, setDriveStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const userId = token ? parseJwt(token).user_id : undefined;
 
-  // Check connection status on mount using new API
-  useEffect(() => {
-    if (token) {
-      fetch(`http://localhost:8080/api/v1/auth/google/drive/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setIsConnected(data.connected))
-        .catch(() => setIsConnected(false));
-    }
-  }, [token]);
-
-  // Remove checkConnection and connectionStatus logic
-  // Add a refreshStatus function to re-call the status API
-  const refreshStatus = () => {
-    if (token) {
-      setRefreshing(true);
-      fetch(`http://localhost:8080/api/v1/auth/google/drive/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setIsConnected(data.connected))
-        .catch(() => setIsConnected(false))
-        .finally(() => setRefreshing(false));
-    }
-  };
-
-  // Update connectToDrive and clearTokens to call refreshStatus after actions
-  const connectToDrive = () => {
-    setLoading(true);
-    GoogleDriveService.authenticateWithGoogleDrive(
-      () => {
-        setLoading(false);
-        toast.success("Google Drive connected successfully!");
-        refreshStatus();
-      },
-      (error) => {
-        setLoading(false);
-        toast.error(`Connection failed: ${error}`);
-      },
-    );
-  };
-
-  const clearTokens = async () => {
+  // Check connection status on mount using the new API
+  const checkDriveConnection = async () => {
     if (!token || !userId) return;
+    setLoading(true);
     try {
-      await GoogleDriveService.clearTokens(token, userId);
-      toast.success("Tokens cleared successfully. You can now reconnect.");
-      refreshStatus();
-    } catch (error: any) {
-      toast.error(`Failed to clear tokens: ${error.message}`);
+      const res = await fetch(`http://localhost:8080/api/v1/instagram/check-drive-connection`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await res.json();
+      setDriveStatus(data);
+    } catch {
+      setDriveStatus(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "CONNECTED":
-        return "text-green-600 bg-green-50 border-green-200";
-      case "TOKEN_EXPIRED":
-        return "text-orange-600 bg-orange-50 border-orange-200";
-      case "INCOMPLETE_CONNECTION":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      default:
-        return "text-gray-600 bg-gray-50 border-gray-200";
-    }
+  useEffect(() => {
+    checkDriveConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, userId]);
+
+  const refreshStatus = () => {
+    setRefreshing(true);
+    checkDriveConnection();
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "CONNECTED":
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-      case "TOKEN_EXPIRED":
-        return <Clock className="h-5 w-5 text-orange-600" />;
-      case "INCOMPLETE_CONNECTION":
-      case "NOT_CONNECTED":
-        return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
-      default:
-        return <HardDrive className="h-5 w-5 text-gray-600" />;
-    }
-  };
+  // UI helpers
+  const isConnected = driveStatus && driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
 
   return (
     <Card>
@@ -121,57 +76,58 @@ export function GoogleDriveIntegration() {
         <CardTitle className="flex items-center gap-2">
           <HardDrive className="h-5 w-5" />
           Google Drive Integration
-          {refreshing && (
-            <RefreshCw className="h-4 w-4 animate-spin text-gray-500" />
-          )}
+          {refreshing && <RefreshCw className="h-4 w-4 animate-spin text-gray-500" />}
         </CardTitle>
         <CardDescription>
           Connect your Google Drive to automatically backup Instagram reels
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* New connection status UI */}
-        {isConnected === true && (
+        {/* Connection status UI */}
+        {loading ? (
+          <div className="text-sm text-gray-500">Checking Google Drive connection...</div>
+        ) : isConnected ? (
           <Alert className="bg-green-50 border-green-200 text-green-600 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <span>✅ Connected</span>
+            <span>✅ Fully Connected</span>
           </Alert>
-        )}
-        {isConnected === false && (
+        ) : (
           <Alert className="bg-red-50 border-red-200 text-red-600 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-600" />
             <span>❌ Not Connected</span>
           </Alert>
         )}
         {/* Connection Details */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">Access Token:</span>
-            <Badge variant={isConnected === true ? "default" : "destructive"}>
-              {isConnected === true ? "Valid" : "Invalid"}
-            </Badge>
+        {driveStatus && (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">Access Token:</span>
+              <Badge variant={driveStatus.has_access_token ? "default" : "destructive"}>
+                {driveStatus.has_access_token ? "Valid" : "Invalid"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">Auto Refresh:</span>
+              <Badge variant={driveStatus.can_auto_refresh ? "default" : "secondary"}>
+                {driveStatus.can_auto_refresh ? "Available" : "Unavailable"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">Expires In:</span>
+              <span>{driveStatus.expires_in || "-"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <HardDrive className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">Status:</span>
+              <Badge>{driveStatus.status || "Unknown"}</Badge>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">Auto Refresh:</span>
-            <Badge variant={isConnected === true ? "default" : "secondary"}>
-              {isConnected === true ? "Available" : "Unavailable"}
-            </Badge>
-          </div>
-        </div>
+        )}
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {isConnected !== true && (
-            <Button
-              onClick={connectToDrive}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              {loading ? "Connecting..." : "Connect Drive"}
-            </Button>
-          )}
           <Button
             onClick={refreshStatus}
             variant="outline"
@@ -181,17 +137,6 @@ export function GoogleDriveIntegration() {
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh Status
           </Button>
-          {isConnected !== true && (
-            <Button
-              onClick={clearTokens}
-              variant="destructive"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear Tokens
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

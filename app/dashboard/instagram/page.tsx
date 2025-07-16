@@ -14,7 +14,6 @@ import { useAuth } from "@/context/AuthContext";
 import { createPortal } from "react-dom";
 import { parseJwt } from "@/lib/utils";
 import { InstagramService, GoogleDriveService } from "@/lib/services";
-import { useGoogleDriveConnection, useInstagramReels } from "@/hooks/use-api";
 import { uploadToS3 } from "@/lib/api";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
@@ -191,7 +190,26 @@ export default function InstagramDownloader() {
   >({});
 
   const userId = token ? parseJwt(token).user_id : undefined;
-  const { isConnected: isDriveConnected, checkConnection } = useGoogleDriveConnection();
+  const [driveStatus, setDriveStatus] = useState<any>(null);
+  const [driveLoading, setDriveLoading] = useState(false);
+
+  // Check Google Drive connection for Instagram (correct endpoint)
+  useEffect(() => {
+    if (!token || !userId) return;
+    setDriveLoading(true);
+    fetch("http://localhost:8080/api/v1/instagram/check-drive-connection", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ user_id: userId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setDriveStatus(data))
+      .catch(() => setDriveStatus(null))
+      .finally(() => setDriveLoading(false));
+  }, [token, userId]);
 
   // Save username to localStorage when it changes
   useEffect(() => {
@@ -364,10 +382,7 @@ export default function InstagramDownloader() {
       return;
     }
 
-    // Always check Google Drive connection and use the latest result
-    const status = await checkConnection();
-    console.log(status)
-    if (!status || status.has_access_token !== true) {
+    if (!driveStatus || driveStatus.status !== "FULLY_CONNECTED" || !driveStatus.has_access_token || driveStatus.is_expired) {
       toast.error("Google Drive not connected. Please connect first.");
       return;
     }
@@ -452,9 +467,22 @@ export default function InstagramDownloader() {
           Fetch and download Instagram reels from any public profile.
         </p>
       </div>
-
-      {/* Google Drive Connection Status */}
-      <GoogleDriveIntegration />
+      {/* Google Drive Connection Status (Instagram-specific) */}
+      <div className="mb-4">
+        {driveLoading ? (
+          <div className="text-sm text-gray-500">Checking Google Drive connection...</div>
+        ) : driveStatus && driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired ? (
+          <div className="text-green-600 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            <span>Google Drive Connected</span>
+          </div>
+        ) : (
+          <div className="text-red-600 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Google Drive Not Connected</span>
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-6">
         {/* Main section */}
