@@ -112,7 +112,7 @@ export function Sidebar() {
           });
           if (driveRes.ok) {
             driveStatus = await driveRes.json();
-            driveConnected = driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
+            driveConnected = driveStatus.status === "FULLY_CONNECTED";
           }
         }
         setStatus({

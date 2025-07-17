@@ -382,7 +382,7 @@ export default function InstagramDownloader() {
       return;
     }
 
-    if (!driveStatus || driveStatus.status !== "FULLY_CONNECTED" || !driveStatus.has_access_token || driveStatus.is_expired) {
+    if (!driveStatus || driveStatus.status !== "FULLY_CONNECTED") {
       toast.error("Google Drive not connected. Please connect first.");
       return;
     }
@@ -471,10 +471,13 @@ export default function InstagramDownloader() {
       <div className="mb-4">
         {driveLoading ? (
           <div className="text-sm text-gray-500">Checking Google Drive connection...</div>
-        ) : driveStatus && driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired ? (
+        ) : driveStatus && driveStatus.status === "FULLY_CONNECTED" ? (
           <div className="text-green-600 flex items-center gap-2">
             <CheckCircle className="h-5 w-5" />
             <span>Google Drive Connected</span>
+            {(driveStatus.is_expired || driveStatus.needs_refresh) && (
+              <span className="ml-2 text-yellow-600 text-xs">(Token expired or needs refresh)</span>
+            )}
           </div>
         ) : (
           <div className="text-red-600 flex items-center gap-2">

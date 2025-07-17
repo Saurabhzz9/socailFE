@@ -68,7 +68,7 @@ export function GoogleDriveIntegration() {
   };
 
   // UI helpers
-  const isConnected = driveStatus && driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
+  const isConnected = driveStatus && driveStatus.status === "FULLY_CONNECTED";
 
   return (
     <Card>
@@ -90,6 +90,9 @@ export function GoogleDriveIntegration() {
           <Alert className="bg-green-50 border-green-200 text-green-600 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             <span>✅ Fully Connected</span>
+            {(driveStatus.is_expired || driveStatus.needs_refresh) && (
+              <span className="ml-2 text-yellow-600 text-xs">(Token expired or needs refresh)</span>
+            )}
           </Alert>
         ) : (
           <Alert className="bg-red-50 border-red-200 text-red-600 flex items-center gap-2">

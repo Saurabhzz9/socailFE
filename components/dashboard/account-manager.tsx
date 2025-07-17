@@ -107,7 +107,7 @@ export function AccountManager() {
           });
           if (driveRes.ok) {
             driveStatus = await driveRes.json();
-            driveConnected = driveStatus.status === "FULLY_CONNECTED" && driveStatus.has_access_token && !driveStatus.is_expired;
+            driveConnected = driveStatus.status === "FULLY_CONNECTED";
           }
         }
         // Merge Google Drive connection status into status

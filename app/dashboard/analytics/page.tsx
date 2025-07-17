@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ import {
   Legend,
 } from "recharts";
 import { useAuth } from "@/context/AuthContext";
+import { startOfToday, startOfWeek, endOfWeek, subWeeks, subMonths, subYears, format } from "date-fns";
 
 const PLATFORMS = [
   { label: "All", value: "all" },
@@ -62,34 +63,71 @@ const METRIC_KEYS = {
 export default function AnalyticsPage() {
   const { token } = useAuth();
   const [platform, setPlatform] = useState("all");
-  const [analytics, setAnalytics] = useState<any[]>([]);
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const quickRanges = [
+    { label: "Today", value: "today" },
+    { label: "This Week", value: "this_week" },
+    { label: "Last Week", value: "last_week" },
+    { label: "Last 6 Months", value: "last_6_months" },
+    { label: "Last 1 Year", value: "last_1_year" },
+  ];
+  const [selectedRange, setSelectedRange] = useState("today");
 
+  // Set default date to today on mount
   useEffect(() => {
-    async function fetchAnalytics() {
-      setLoading(true);
-      let url = "/api/v1/analytics/combined";
-      if (platform === "facebook") url = "/api/v1/analytics/facebook";
-      try {
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setAnalytics(Array.isArray(data) ? data : []);
-      } catch (e) {
-        setAnalytics([]);
-      }
-      setLoading(false);
+    const today = new Date().toISOString().slice(0, 10);
+    setSince(today);
+    setUntil(today);
+  }, []);
+
+  // Helper to set since/until based on dropdown
+  useEffect(() => {
+    const today = startOfToday();
+    let since = format(today, "yyyy-MM-dd");
+    let until = format(today, "yyyy-MM-dd");
+    if (selectedRange === "this_week") {
+      since = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+      until = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    } else if (selectedRange === "last_week") {
+      const lastWeekStart = startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
+      const lastWeekEnd = endOfWeek(subWeeks(today, 1), { weekStartsOn: 1 });
+      since = format(lastWeekStart, "yyyy-MM-dd");
+      until = format(lastWeekEnd, "yyyy-MM-dd");
+    } else if (selectedRange === "last_6_months") {
+      since = format(subMonths(today, 6), "yyyy-MM-dd");
+      until = format(today, "yyyy-MM-dd");
+    } else if (selectedRange === "last_1_year") {
+      since = format(subYears(today, 1), "yyyy-MM-dd");
+      until = format(today, "yyyy-MM-dd");
     }
-    if (token) fetchAnalytics();
-  }, [platform, token]);
+    setSince(since);
+    setUntil(until);
+  }, [selectedRange]);
+
+  // Only fetch analytics when token and dates are set, and only once per change
+  useEffect(() => {
+    if (!token || !since || !until) return;
+    setLoading(true);
+    let url = "/api/v1/analytics/combined";
+    if (platform === "facebook") url = "/api/v1/analytics/facebook";
+    try {
+      fetch(`${url}?since=${since}&until=${until}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then(setAnalytics);
+    } catch (e) {
+      setAnalytics(null);
+    }
+    setLoading(false);
+  }, [since, until, token, platform]);
 
   // Helper to get today's analytics row
-  function getTodayAnalytics() {
-    const today = new Date().toISOString().slice(0, 10);
-    return analytics.find(a => (a.date || a.Date)?.slice(0, 10) === today);
-  }
-  const todayAnalytics = getTodayAnalytics();
+  // Use analytics summary object directly
+  const summaryAnalytics = analytics || {};
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6 text-foreground">
@@ -139,20 +177,39 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Platform Dropdown */}
+      <label className="font-medium">Platform:</label>
+      <select
+        className="bg-accent text-foreground rounded px-3 py-2"
+        value={platform}
+        onChange={e => setPlatform(e.target.value)}
+      >
+        <option value="all">All</option>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+        <option value="youtube">YouTube</option>
+      </select>
+      {loading && <span className="ml-2 text-sm text-muted-foreground">Loading...</span>}
+
+      {/* Date Picker */}
       <div className="mb-4 flex items-center space-x-4">
-        <label className="font-medium">Platform:</label>
+        <label className="font-medium">Range:</label>
         <select
-          className="bg-accent text-foreground rounded px-3 py-2"
-          value={platform}
-          onChange={e => setPlatform(e.target.value)}
+          value={selectedRange}
+          onChange={e => setSelectedRange(e.target.value)}
+          className="rounded px-3 py-2 bg-accent text-foreground border border-white/10"
         >
-          <option value="all">All</option>
-          <option value="facebook">Facebook</option>
-          <option value="instagram">Instagram</option>
-          <option value="youtube">YouTube</option>
+          {quickRanges.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
         </select>
-        {loading && <span className="ml-2 text-sm text-muted-foreground">Loading...</span>}
       </div>
+
+      {/* Date Range Display */}
+      {summaryAnalytics?.date_range && (
+        <div className="mb-4 text-sm text-muted-foreground">
+          Showing analytics from <span className="font-semibold">{summaryAnalytics.date_range.since}</span> to <span className="font-semibold">{summaryAnalytics.date_range.until}</span>
+        </div>
+      )}
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -161,7 +218,7 @@ export default function AnalyticsPage() {
             <div>
               <p className="text-purple-200 text-sm font-medium">{label}</p>
               <p className="text-3xl font-bold text-white">
-                {loading ? <span className="text-muted-foreground">...</span> : (todayAnalytics?.[METRIC_KEYS[key as keyof typeof METRIC_KEYS]] ?? <span className="text-muted-foreground">-</span>)}
+                {loading ? <span className="text-muted-foreground">...</span> : (summaryAnalytics?.[METRIC_KEYS[key as keyof typeof METRIC_KEYS]] ?? <span className="text-muted-foreground">-</span>)}
               </p>
             </div>
           </div>
